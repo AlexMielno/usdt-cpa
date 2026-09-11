@@ -32,6 +32,8 @@ jobs:
 
   android:
     runs-on: ubuntu-latest
+    env:
+      HAY_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,7 +46,7 @@ jobs:
       - run: npm run android:sincronizar
         working-directory: app
       - name: Preparar firma (si hay secretos)
-        if: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+        if: ${{ env.HAY_KEYSTORE != '' }}
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > app/android/release.jks
           cat > app/android/keystore.properties <<EOF
