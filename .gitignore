@@ -22,3 +22,4 @@ credenciales*.json
 Thumbs.db
 .DS_Store
 __pycache__/
+app/pruebas/.electron-real/
