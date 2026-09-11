@@ -118,6 +118,11 @@ export function pantallaInicio({ manejarError }) {
 
 /** Gráfica de tendencia sencilla (SVG) con las últimas capturas: P2P venta (amarillo) y BCV (gris). */
 function sparkline(hist) {
+  if (hist && !Array.isArray(hist)) {
+    // Forma inesperada (se vio en campo "hist.flatMap is not a function"): se anota para el diagnóstico y se omite la gráfica
+    if (!sparkline.avisado) { sparkline.avisado = true; registrarError(new Error('Histórico con forma inesperada (' + typeof hist + '): ' + JSON.stringify(hist).slice(0, 300)), 'inicio/grafica'); }
+    return el('div');
+  }
   if (!Array.isArray(hist) || hist.length < 3) return el('div');
   hist = hist.filter(h => h && typeof h === 'object');
   if (hist.length < 3) return el('div');

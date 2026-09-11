@@ -106,6 +106,8 @@ export function pantallaAjustes({ alDesvincular, alBloquear }) {
   const textoDiagnostico = () => {
     const l = ['USDT CPA ' + (cfg.VERSION || '') + ' · ' + plataforma + ' · ' + navigator.userAgent, 'Pantalla: ' + (estado.pantalla || '') + ' · ' + new Date().toISOString(),
       'Tasas en memoria: ' + (estado.tasas ? 'sí (' + (estado.tasas.actualizado || '') + ')' : 'no') + ' · histórico: ' + (Array.isArray(estado.historico) ? estado.historico.length : typeof estado.historico) + ' · operaciones: ' + (estado.operaciones || []).length,
+      'Muestra del histórico: ' + JSON.stringify(estado.historico).slice(0, 240),
+      'Muestra de tasas: ' + JSON.stringify(estado.tasas ? Object.keys(estado.tasas) : null),
       'Errores (' + estado.errores.length + '):'];
     estado.errores.forEach(e => l.push('- ' + e.hora + ' [' + e.origen + '] ' + e.mensaje + (e.pila ? '\n    ' + e.pila : '')));
     return l.join('\n');
