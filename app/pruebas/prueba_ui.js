@@ -40,7 +40,7 @@ async function main() {
   await win.webContents.session.clearStorageData();
   await win.loadURL('http://localhost:' + PUERTO + '/');
   await win.webContents.insertCSS('*, *::before, *::after { animation: none !important; transition: none !important; }');
-  await win.webContents.executeJavaScript("window.CONFIG_USDT.API_URL = 'http://localhost:8787/'; true", true);
+  await win.webContents.executeJavaScript("window.CONFIG_USDT.API_URL = 'http://localhost:8787/'; window.CONFIG_USDT.TURNSTILE_SITEKEY = ''; true", true);
   const js = (codigo) => win.webContents.executeJavaScript(codigo, true);
   const foto = async (nombre) => { const img = await win.webContents.capturePage(); fs.writeFileSync(path.join(CAPTURAS, nombre + '.png'), img.toPNG()); console.log('captura', nombre); };
   const texto = () => js('document.body.innerText');
@@ -65,7 +65,7 @@ async function main() {
 
   // Registrar una compra
   await clicTexto('Registrar operación'); await esperarHasta(() => js(`document.body.innerText.includes('Sugerida')`), 30000); await esperar(300);
-  await escribir('input[inputmode=decimal]', '100');
+  await escribir('input[name=montoUsdt]', '100');
   await esperar(300); await foto('04-registro');
   await clicTexto('Registrar operación'); await esperar(3000);
   await foto('05-inicio-con-operacion');
@@ -75,8 +75,8 @@ async function main() {
   // Registrar una venta
   await clic('nav .principal'); await esperar(1200);
   await clicTexto('VENTA de USDT'); await esperar(200);
-  await escribir('input[inputmode=decimal]', '40');
-  await js(`(function(){const i=[...document.querySelectorAll('input[inputmode=decimal]')]; i[4].value='5'; i[4].dispatchEvent(new Event('input',{bubbles:true}));})()`);
+  await escribir('input[name=montoUsdt]', '40');
+  await escribir('input[name=comisionUsdt]', '5');
   await escribir('textarea', 'Venta de prueba con comisión');
   await esperar(200); await foto('06-registro-venta');
   await clicTexto('Registrar operación'); await esperar(3000);
@@ -85,6 +85,17 @@ async function main() {
   await clicTexto('Historial'); await esperar(1200); await foto('07-historial');
   await clic('.op'); await esperar(500); await foto('08-detalle');
   await js(`document.querySelector('.modal .cerrar').click()`);
+  // Ayuda: burbuja al pasar el mouse y ventana al hacer clic
+  await clicTexto('Inicio'); await esperar(800);
+  await js(`(function(){const b=document.querySelector('.btn-ayuda'); b.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true})); return true;})()`);
+  await esperar(300); await foto('16-ayuda-burbuja');
+  const hayBurbuja = await js(`!!document.querySelector('.burbuja-ayuda')`);
+  await js(`(function(){const b=document.querySelector('.btn-ayuda'); b.dispatchEvent(new MouseEvent('mouseleave',{bubbles:true})); b.click(); return true;})()`);
+  await esperar(300); await foto('17-ayuda-modal');
+  const hayModal = await js(`!!document.querySelector('.modal .ayuda-modal')`);
+  if (!hayModal) errores.push('La ayuda no abrió la ventana al hacer clic');
+  console.log('ayuda: burbuja=' + hayBurbuja + ' modal=' + hayModal + ' botones=' + await js(`document.querySelectorAll('.btn-ayuda').length`));
+  await js(`document.querySelector('.modal .cerrar').click()`); await esperar(200);
   // Reportes + PDF
   await clicTexto('Reportes'); await esperar(1000); await foto('14-reportes');
   await clicTexto('Todo'); await esperar(400);

@@ -111,6 +111,56 @@ const I = {
   descargar: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/>',
 };
 
+/**
+ * Botón "?" de ayuda. Al pasar el mouse (PC) muestra una burbuja; al tocar/clic abre una ventana con
+ * la explicación y ejemplos. Los textos viven en ayudas.js.
+ */
+import { AYUDAS } from './ayudas.js';
+const conMouse = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(hover: hover)').matches;
+let burbuja = null;
+
+export function ayuda(clave) {
+  const a = AYUDAS[clave];
+  if (!a) return el('span');
+  const b = el('button.btn-ayuda', { type: 'button', 'aria-label': 'Ayuda: ' + a.titulo, title: '' }, '?');
+  b.addEventListener('click', (ev) => { ev.stopPropagation(); ev.preventDefault(); ocultarBurbuja(); modalAyuda(a); });
+  if (conMouse) {
+    b.addEventListener('mouseenter', () => mostrarBurbuja(b, a));
+    b.addEventListener('mouseleave', ocultarBurbuja);
+  }
+  return b;
+}
+
+function contenidoAyuda(a, completo) {
+  return [
+    el('div.ayuda-titulo', {}, a.titulo),
+    el('div.ayuda-texto', {}, a.texto),
+    a.ejemplos && a.ejemplos.length ? el('div.ayuda-ejemplos', {}, el('div.ayuda-etq', {}, 'Ejemplos'), el('ul', {}, (completo ? a.ejemplos : a.ejemplos.slice(0, 2)).map(e => el('li', {}, e)))) : null,
+  ];
+}
+
+function mostrarBurbuja(boton, a) {
+  ocultarBurbuja();
+  burbuja = el('div.burbuja-ayuda', {}, contenidoAyuda(a, false));
+  document.body.appendChild(burbuja);
+  const r = boton.getBoundingClientRect();
+  const ancho = Math.min(340, window.innerWidth - 24);
+  burbuja.style.width = ancho + 'px';
+  let x = r.left + r.width / 2 - ancho / 2;
+  x = Math.max(12, Math.min(x, window.innerWidth - ancho - 12));
+  const alto = burbuja.offsetHeight;
+  const arriba = r.top - alto - 10 > 8;
+  burbuja.style.left = x + 'px';
+  burbuja.style.top = (arriba ? r.top - alto - 10 : r.bottom + 10) + 'px';
+  burbuja.classList.add(arriba ? 'arriba' : 'abajo');
+}
+
+function ocultarBurbuja() { if (burbuja) { burbuja.remove(); burbuja = null; } }
+
+function modalAyuda(a) {
+  modal({ titulo: null, contenido: el('div.ayuda-modal', {}, contenidoAyuda(a, true)) });
+}
+
 export function icono(nombre) {
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   s.setAttribute('viewBox', '0 0 24 24');

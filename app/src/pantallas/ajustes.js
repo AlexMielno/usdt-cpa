@@ -1,5 +1,5 @@
 /** Ajustes: seguridad (PIN, huella, sesión), dispositivo, enlaces e información. */
-import { el, montar, toast, icono, confirmar, modal } from '../ui.js';
+import { el, montar, toast, icono, confirmar, modal, ayuda } from '../ui.js';
 import { cabecera, conNavegacion } from './cascaron.js';
 import { navegar } from '../estado.js';
 import * as almacen from '../almacen.js';
@@ -8,6 +8,8 @@ import { biometria, esMovil, plataforma, abrirEnlaceExterno } from '../nativo.js
 import { crearTecladoPin } from './teclado.js';
 import { comprobarActualizacion, descargar, esInstaladorWindows } from '../actualizador.js';
 import { estado, emitir } from '../estado.js';
+import { comisionesConfiguradas, guardarComisiones, reglasPorDefecto } from '../comisiones.js';
+import { aNumero, num } from '../formato.js';
 
 const URL_HOJA = 'https://docs.google.com/spreadsheets/d/1HR_0qXnZN-i7tw4fSAOqjUc_ZQornHsNG3eM6PasVBc/edit#gid=117236580';
 
@@ -72,18 +74,45 @@ export function pantallaAjustes({ alDesvincular, alBloquear }) {
   };
   pintarActualizacion();
 
+  // ---- comisiones por defecto ----
+  const zonaComisiones = el('div', {}, el('span.spinner'));
+  const pintarComisiones = (reglas) => {
+    const campos = {};
+    const inputNum = (tipo, clave, valor) => { const i = el('input', { type: 'text', inputmode: 'decimal', value: num(valor, 2) }); campos[tipo + '.' + clave] = i; return i; };
+    const bloque = (tipo, titulo) => el('div', { estilo: { marginBottom: '10px' } },
+      el('div.mini', { estilo: { fontWeight: 700, color: 'var(--texto)', marginBottom: '6px' } }, titulo),
+      el('div.fila', {},
+        el('div.campo', {}, el('label', {}, '% del monto en USDT'), el('div.sufijo', {}, inputNum(tipo, 'usdtPct', reglas[tipo].usdtPct), el('span', {}, '%'))),
+        el('div.campo', {}, el('label', {}, 'USDT fijos'), el('div.sufijo', {}, inputNum(tipo, 'usdtFijo', reglas[tipo].usdtFijo), el('span', {}, 'USDT')))),
+      el('div.fila', {},
+        el('div.campo', {}, el('label', {}, '% del total en Bs'), el('div.sufijo', {}, inputNum(tipo, 'vesPct', reglas[tipo].vesPct), el('span', {}, '%'))),
+        el('div.campo', {}, el('label', {}, 'Bs fijos'), el('div.sufijo', {}, inputNum(tipo, 'vesFijo', reglas[tipo].vesFijo), el('span', {}, 'Bs')))));
+    const leer = () => ({ compra: {}, venta: {} });
+    zonaComisiones.replaceChildren(
+      bloque('compra', 'Al COMPRAR USDT'), bloque('venta', 'Al VENDER USDT'),
+      el('div.acciones', {},
+        el('button.btn.fantasma', { type: 'button', onClick: async () => { pintarComisiones(reglasPorDefecto()); } }, 'Valores de fábrica'),
+        el('button.btn', { type: 'button', onClick: async () => {
+          const r = leer();
+          Object.entries(campos).forEach(([k, i]) => { const [t, c] = k.split('.'); r[t][c] = aNumero(i.value) || 0; });
+          try { await guardarComisiones(r); toast('Reglas de comisión guardadas', 'ok'); } catch (e) { toast(e.message, 'error'); }
+        } }, 'Guardar reglas')),
+    );
+  };
+  comisionesConfiguradas().then(pintarComisiones);
+
   const contenido = el('div.pantalla', {},
     cabecera('Ajustes', 'Seguridad y dispositivo'),
     el('div.grid-desktop-2', {},
       el('div', {},
-        el('div.tarjeta', {}, el('h2', {}, 'Seguridad'),
+        el('div.tarjeta', {}, el('h2', {}, el('span', {}, 'Seguridad', ayuda('seguridad'))),
           el('button.btn.secundario', { type: 'button', estilo: { marginBottom: '10px' }, onClick: cambiarPin }, icono('candado'), 'Cambiar PIN'),
           zonaHuella,
           el('div.separador'),
           el('button.btn.secundario', { type: 'button', estilo: { marginBottom: '10px' }, onClick: alBloquear }, icono('candado'), 'Bloquear ahora'),
           el('button.btn.fantasma', { type: 'button', onClick: async () => { await api.cerrarSesion(); toast('Sesión cerrada; se pedirá verificación al continuar', 'ok'); navegar('inicio'); } }, icono('salir'), 'Cerrar sesión con el servidor'),
         ),
-        el('div.tarjeta', {}, el('h2', {}, 'Este dispositivo'),
+        el('div.tarjeta', {}, el('h2', {}, el('span', {}, 'Este dispositivo', ayuda('dispositivo'))),
           el('div.campo', {}, el('label', {}, 'Nombre con el que se registran las operaciones'), iDisp),
           el('button.btn.peligro', { type: 'button', onClick: async () => {
             const ok = await confirmar({ titulo: 'Desvincular dispositivo', mensaje: 'Se borrarán la clave de enlace, el PIN y la copia local cifrada. Los datos en Google Sheets se conservan. Para volver a usar la app necesitarás la clave de enlace.', textoOk: 'Desvincular', peligro: true });
@@ -92,11 +121,14 @@ export function pantallaAjustes({ alDesvincular, alBloquear }) {
         ),
       ),
       el('div', {},
-        el('div.tarjeta', {}, el('h2', {}, 'Base de datos'),
+        el('div.tarjeta', {}, el('h2', {}, el('span', {}, 'Comisiones por defecto', ayuda('comisionesConfig'))),
+          el('p.mini', {}, 'Se calculan solas al registrar; en cada operación puedes corregir el valor.'),
+          zonaComisiones),
+        el('div.tarjeta', {}, el('h2', {}, el('span', {}, 'Base de datos', ayuda('baseDatos'))),
           el('p.mini', {}, 'Las operaciones viven en la hoja BD_USDT del libro "Control De Compra Venta USDT". La pestaña PANEL_USDT resume la cartera con fórmulas y TASAS guarda el histórico cada 30 minutos.'),
           el('button.btn.secundario', { type: 'button', onClick: () => abrirEnlaceExterno(URL_HOJA) }, 'Abrir Google Sheets'),
         ),
-        el('div.tarjeta', {}, el('h2', {}, 'Acerca de'),
+        el('div.tarjeta', {}, el('h2', {}, el('span', {}, 'Acerca de', ayuda('acercaDe'))),
           el('table.tabla', {},
             el('tr', {}, el('td.etq', {}, 'Versión'), el('td', {}, cfg.VERSION || '')),
             el('tr', {}, el('td.etq', {}, 'Plataforma'), el('td', {}, plataforma)),

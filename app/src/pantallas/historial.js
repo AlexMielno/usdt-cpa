@@ -1,5 +1,5 @@
 /** Historial con filtros, agrupado por mes, y detalle con anulación / edición de notas. */
-import { el, montar, toast, icono, modal, confirmar, cargando } from '../ui.js';
+import { el, montar, toast, icono, modal, confirmar, cargando, ayuda } from '../ui.js';
 import { cabecera, selectorCartera, conNavegacion } from './cascaron.js';
 import { estado, en } from '../estado.js';
 import * as datos from '../datos.js';
@@ -12,7 +12,7 @@ export function filaOperacion(o) {
     el('div.icono', { clase: anulada ? 'anulada' : o.tipo.toLowerCase() }, o.tipo === 'COMPRA' ? 'C' : 'V'),
     el('div.centro', {},
       el('div.titulo', {}, num(o.montoUsdt, 2) + ' USDT @ ' + num(o.tasa, 2), anulada ? el('span.etiqueta.anulada', {}, 'ANULADA') : null),
-      el('div.detalle', {}, fechaCorta(o.fecha) + ' ' + (o.hora || '') + ' · ' + (o.contraparte || o.metodoPago || o.cartera) + (o.observaciones ? ' · ' + o.observaciones : ''))),
+      el('div.detalle', {}, fechaCorta(o.fecha) + ' ' + (o.hora || '') + (o.observaciones ? ' · ' + o.observaciones : (o.contraparte ? ' · ' + o.contraparte : '')))),
     el('div.derecha', {},
       el('div.monto', {}, ves(o.vesNeto)),
       el('div.dif', { clase: dif > 0 ? 'positivo' : dif < 0 ? 'negativo' : 'neutro' }, 'P2P ' + signo(dif, 0) + ' Bs')),
@@ -39,8 +39,8 @@ export function verDetalle(o) {
         fila('Diferencial vs BCV', signo(o.difBcvVes, 2) + ' Bs (' + signo(o.difBcvPct * 100, 2) + ' %)', cl(o.difBcvVes)),
         fila('Diferencial vs P2P', signo(o.difP2pVes, 2) + ' Bs', cl(o.difP2pVes)),
         fila('Equivalente USD al BCV', '$ ' + num(o.equivUsdBcv, 2)),
-        fila('Contraparte', o.contraparte || '—'),
-        fila('Método / referencia', (o.metodoPago || '—') + ' · ' + (o.referencia || '—')),
+        o.contraparte ? fila('Contraparte', o.contraparte) : null,
+        (o.metodoPago || o.referencia) ? fila('Método / referencia', (o.metodoPago || '—') + ' · ' + (o.referencia || '—')) : null,
         fila('Observaciones', o.observaciones || '—'),
         fila('Registrado desde', (o.dispositivo || '—') + ' · ' + (o.registrado ? new Date(o.registrado).toLocaleString('es-VE') : '')),
       ),
@@ -61,12 +61,10 @@ function editarNotas(o) {
   const iRef = el('input', { type: 'text', value: o.referencia || '', maxlength: 60 });
   const iObs = el('textarea', { maxlength: 1000 }); iObs.value = o.observaciones || '';
   modal({ titulo: 'Editar notas de ' + o.id, contenido: (cerrar) => [
-    el('p.mini', {}, 'Solo se pueden corregir datos descriptivos. Para cambiar montos o tasas, anula la operación y regístrala de nuevo.'),
-    el('div.campo', {}, el('label', {}, 'Contraparte'), iContra),
-    el('div.campo', {}, el('label', {}, 'Referencia'), iRef),
+    el('p.mini', {}, 'Solo se pueden corregir las observaciones. Para cambiar montos o tasas, anula la operación y regístrala de nuevo.'),
     el('div.campo', {}, el('label', {}, 'Observaciones'), iObs),
     el('button.btn', { type: 'button', onClick: async () => {
-      try { await datos.editarOperacion(o.id, { contraparte: iContra.value.trim(), referencia: iRef.value.trim(), observaciones: iObs.value.trim() }); toast('Notas actualizadas', 'ok'); cerrar(); } catch (e) { toast(e.message, 'error'); }
+      try { await datos.editarOperacion(o.id, { observaciones: iObs.value.trim() }); toast('Notas actualizadas', 'ok'); cerrar(); } catch (e) { toast(e.message, 'error'); }
     } }, 'Guardar'),
   ] });
 }
@@ -74,7 +72,7 @@ function editarNotas(o) {
 export function pantallaHistorial({ manejarError }) {
   let filtroTipo = 'TODAS', texto = '', mes = '';
   const lista = el('div');
-  const busq = el('input', { type: 'search', placeholder: 'Buscar por contraparte, referencia, nota…' });
+  const busq = el('input', { type: 'search', placeholder: 'Buscar por nota, ID o monto…' });
   busq.addEventListener('input', () => { texto = busq.value.trim().toLowerCase(); pintar(); });
   const selMes = el('select', { estilo: { background: 'var(--fondo-2)', color: 'var(--texto)', border: '1px solid var(--borde)', borderRadius: '999px', padding: '8px 12px', fontSize: '14px' } });
   selMes.addEventListener('change', () => { mes = selMes.value; pintar(); });
@@ -90,7 +88,7 @@ export function pantallaHistorial({ manejarError }) {
     if (filtroTipo === 'ANULADA') ops = ops.filter(o => o.estado === 'ANULADA');
     else if (filtroTipo !== 'TODAS') ops = ops.filter(o => o.tipo === filtroTipo && o.estado === 'ACTIVA');
     if (mes) ops = ops.filter(o => mesDe(o.fecha) === mes);
-    if (texto) ops = ops.filter(o => [o.id, o.contraparte, o.referencia, o.observaciones, o.metodoPago].join(' ').toLowerCase().includes(texto));
+    if (texto) ops = ops.filter(o => [o.id, o.contraparte, o.referencia, o.observaciones, o.metodoPago, String(o.montoUsdt), String(o.tasa)].join(' ').toLowerCase().includes(texto));
     if (!ops.length) { lista.replaceChildren(el('div.vacio', {}, estado.operaciones.length ? 'Nada coincide con el filtro.' : 'Aún no hay operaciones. Registra la primera desde el botón +.')); return; }
     const grupos = {};
     ops.forEach(o => { (grupos[mesDe(o.fecha)] = grupos[mesDe(o.fecha)] || []).push(o); });
@@ -110,8 +108,8 @@ export function pantallaHistorial({ manejarError }) {
   const contenido = el('div.pantalla', {},
     cabecera('Historial', 'Operaciones registradas', btnRefrescar),
     selectorCartera(pintar),
-    el('div.filtros', {}, busq, selMes),
-    chips,
+    el('div.filtros', {}, busq, selMes, ayuda('filtros')),
+    el('div', { estilo: { display: 'flex', alignItems: 'center', gap: '4px' } }, chips, ayuda('detalleOperacion')),
     el('div', { estilo: { height: '10px' } }),
     lista,
   );

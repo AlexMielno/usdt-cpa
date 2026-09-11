@@ -1,7 +1,7 @@
 {
   "name": "usdt-cpa",
   "productName": "USDT CPA",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Control de compra y venta de USDT (Binance P2P) con tasa BCV - CPA Bejuma / Panamericana",
   "main": "electron/main.js",
   "private": true,

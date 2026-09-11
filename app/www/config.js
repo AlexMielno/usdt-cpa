@@ -16,12 +16,20 @@ window.CONFIG_USDT = {
   MINUTOS_REFRESCO_TASAS: 5,
 
   // Carteras disponibles (deben coincidir con las del backend y la hoja)
-  CARTERAS: ['CPA BEJUMA', 'PANAMERICANA'],
+  // (PANAMERICANA queda oculta por ahora; para activarla agrégala aquí: ['CPA BEJUMA', 'PANAMERICANA'])
+  CARTERAS: ['CPA BEJUMA'],
+
+  // Comisiones que se calculan solas al registrar (se pueden ajustar en la app: Ajustes > Comisiones por defecto)
+  //   usdtPct = % del monto USDT · usdtFijo = USDT fijos · vesPct = % del total en Bs · vesFijo = Bs fijos
+  COMISIONES: {
+    compra: { usdtPct: 0, usdtFijo: 0, vesPct: 0.30, vesFijo: 0 },
+    venta:  { usdtPct: 0.20, usdtFijo: 0, vesPct: 0, vesFijo: 0 },
+  },
 
   // Actualizaciones: repositorio de GitHub donde se publican las versiones (Releases).
   // Windows instalado: se descarga e instala sola. Windows portable y Android: avisa y abre la descarga.
   ACTUALIZACIONES: { propietario: 'AlexMielno', repositorio: 'usdt-cpa' },
 
   // Versión de esta compilación (la actualiza herramientas/nueva_version.js)
-  VERSION: '1.1.0',
+  VERSION: '1.2.0',
 };

@@ -152,9 +152,9 @@ export function reporteOperaciones(todas, desde, hasta, cartera, tipo) {
       { titulo: 'Por mes', columnas: ['Mes', 'Operaciones', 'USDT', 'Bolívares', 'Tasa promedio'], alinear: [0],
         filas: meses.map(m => { const mu = esCompra ? m.comprasUsdt : m.ventasUsdt, mv = esCompra ? m.comprasVes : m.ventasVes; return [nombreMes(m.mes), String(m.n), num(mu, 2), ves(mv), mu ? num(mv / mu, 4) : '—']; }),
         totales: ['Total', String(ops.length), num(u, 2), ves(v), u ? num(v / u, 4) : '—'] },
-      { titulo: 'Detalle', columnas: ['Fecha', 'ID', 'Cartera', 'USDT', 'Tasa', 'Total Bs', 'Com. USDT', 'Com. Bs', 'Neto Bs', 'Contraparte', 'Método', 'Observaciones'], alinear: [0, 1, 2, 9, 10, 11],
-        filas: ops.map(o => [fechaCorta(o.fecha), o.id, o.cartera, num(o.montoUsdt, 2), num(o.tasa, 2), num(o.totalVes, 2), num(o.comisionUsdt, 2), num(o.comisionVes, 2), num(o.vesNeto, 2), o.contraparte || '', o.metodoPago || '', o.observaciones || '']),
-        totales: ['Total', '', '', num(sumar(ops, 'montoUsdt'), 2), '', num(sumar(ops, 'totalVes'), 2), num(sumar(ops, 'comisionUsdt'), 2), num(sumar(ops, 'comisionVes'), 2), num(v, 2), '', '', ''] },
+      { titulo: 'Detalle', columnas: ['Fecha', 'ID', 'Cartera', 'USDT', 'Tasa', 'Total Bs', 'Com. USDT', 'Com. Bs', 'Neto Bs', 'Observaciones'], alinear: [0, 1, 2, 9],
+        filas: ops.map(o => [fechaCorta(o.fecha), o.id, o.cartera, num(o.montoUsdt, 2), num(o.tasa, 2), num(o.totalVes, 2), num(o.comisionUsdt, 2), num(o.comisionVes, 2), num(o.vesNeto, 2), o.observaciones || '']),
+        totales: ['Total', '', '', num(sumar(ops, 'montoUsdt'), 2), '', num(sumar(ops, 'totalVes'), 2), num(sumar(ops, 'comisionUsdt'), 2), num(sumar(ops, 'comisionVes'), 2), num(v, 2), ''] },
     ],
     nota: esCompra ? 'Neto Bs = total pagado incluyendo comisiones en bolívares.' : 'Neto Bs = total recibido después de comisiones en bolívares.',
   };

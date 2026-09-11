@@ -1,5 +1,5 @@
 /** Inicio: tasas del momento, estado de la cartera y últimas operaciones. */
-import { el, montar, toast, icono, cargando } from '../ui.js';
+import { el, montar, toast, icono, cargando, ayuda } from '../ui.js';
 import { cabecera, selectorCartera, conNavegacion } from './cascaron.js';
 import { estado, navegar, en } from '../estado.js';
 import * as datos from '../datos.js';
@@ -20,14 +20,14 @@ export function pantallaInicio({ manejarError }) {
     const bcv = t.bcv || {}, p2p = t.p2p || {};
     const antiguedad = haceCuanto(t.actualizado);
     zonaTasas.replaceChildren(el('div.tarjeta.resaltada', {},
-      el('h2', {}, el('span', {}, 'Tasas del momento'), el('span.accion.mini', {}, antiguedad)),
+      el('h2', {}, el('span', {}, 'Tasas del momento', ayuda('tasas')), el('span.accion.mini', {}, antiguedad)),
       el('div.grid-3', {},
         el('div.dato', {}, el('div.etq', {}, 'BCV oficial'), el('div.val', {}, bcv.valor ? num(bcv.valor, 4) : '—'), el('div.nota', {}, bcv.fechaValor ? 'Valor ' + fechaCorta(bcv.fechaValor) : (bcv.fuente || 'sin datos'))),
         el('div.dato.amarillo', {}, el('div.etq', {}, 'P2P compra'), el('div.val', {}, p2p.compra ? num(p2p.compra.promedio5 || p2p.compra.mejor, 2) : '—'), el('div.nota', {}, p2p.compra ? 'Mejor ' + num(p2p.compra.mejor, 2) : 'sin datos')),
         el('div.dato.amarillo', {}, el('div.etq', {}, 'P2P venta'), el('div.val', {}, p2p.venta ? num(p2p.venta.promedio5 || p2p.venta.mejor, 2) : '—'), el('div.nota', {}, p2p.venta ? 'Mejor ' + num(p2p.venta.mejor, 2) : 'sin datos')),
       ),
       el('div', { estilo: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', fontSize: '12.5px' } },
-        el('span.texto-suave', {}, 'Brecha P2P venta vs BCV: ', el('b', { clase: (t.brechaPct || 0) >= 0 ? 'positivo' : 'negativo' }, (t.brechaPct !== undefined ? signo(t.brechaPct, 2) + ' %' : '—'))),
+        el('span.texto-suave', {}, 'Brecha P2P venta vs BCV: ', el('b', { clase: (t.brechaPct || 0) >= 0 ? 'positivo' : 'negativo' }, (t.brechaPct !== undefined ? signo(t.brechaPct, 2) + ' %' : '—')), ayuda('brecha')),
         el('span.mini', {}, (t.errores || []).length ? '⚠ ' + t.errores.join(' · ') : (p2p.compra && p2p.compra.respaldo ? '⚠ P2P de respaldo' : 'Promedio de los 5 mejores anuncios')),
       ),
       sparkline(estado.historico),
@@ -40,7 +40,7 @@ export function pantallaInicio({ manejarError }) {
     const valorActualVes = t.p2p && t.p2p.venta ? r.saldoUsdt * (t.p2p.venta.promedio5 || t.p2p.venta.mejor) : 0;
     const noRealizado = r.saldoUsdt > 0 && r.costoPromedio > 0 && valorActualVes ? valorActualVes - r.saldoUsdt * r.costoPromedio : 0;
     zonaResumen.replaceChildren(el('div.tarjeta', {},
-      el('h2', {}, el('span', {}, 'Cartera ' + estado.cartera), el('span.accion.mini', {}, r.operaciones + ' operaciones')),
+      el('h2', {}, el('span', {}, 'Cartera ' + estado.cartera, ayuda('resumen')), el('span.accion.mini', {}, r.operaciones + ' operaciones')),
       el('div.grid-2', {},
         el('div.dato', {}, el('div.etq', {}, 'Saldo USDT'), el('div.val', {}, num(r.saldoUsdt, 2)), el('div.nota', {}, valorActualVes ? '≈ ' + ves(valorActualVes) + ' al P2P' : '')),
         el('div.dato', {}, el('div.etq', {}, 'Costo promedio'), el('div.val.peq', {}, r.costoPromedio ? num(r.costoPromedio, 4) : '—'), el('div.nota', {}, 'VES por USDT')),
@@ -61,7 +61,7 @@ export function pantallaInicio({ manejarError }) {
   const pintarUltimas = () => {
     const ops = estado.operaciones.filter(o => o.cartera === estado.cartera).slice(0, 5);
     zonaUltimas.replaceChildren(el('div.tarjeta', {},
-      el('h2', {}, el('span', {}, 'Últimas operaciones'), el('button.enlace.accion', { type: 'button', onClick: () => navegar('historial') }, 'Ver todas')),
+      el('h2', {}, el('span', {}, 'Últimas operaciones', ayuda('ultimas')), el('button.enlace.accion', { type: 'button', onClick: () => navegar('historial') }, 'Ver todas')),
       ops.length ? ops.map(o => filaOperacion(o)) : el('div.vacio', {}, 'Todavía no hay operaciones en esta cartera.'),
     ));
   };
@@ -93,7 +93,7 @@ export function pantallaInicio({ manejarError }) {
   pintarActualizacion();
 
   const contenido = el('div.pantalla', {},
-    cabecera('USDT CPA', 'Compra · venta · diferenciales', btnRefrescar),
+    cabecera('USDT CPA', 'Compra · venta · diferenciales', el('div', { estilo: { display: 'flex', alignItems: 'center', gap: '6px' } }, ayuda('actualizar'), btnRefrescar)),
     zonaActualizacion,
     selectorCartera(() => { pintarResumen(); pintarUltimas(); }),
     el('div.grid-desktop-2', {}, el('div', {}, zonaTasas, el('button.btn', { type: 'button', estilo: { marginBottom: '12px' }, onClick: () => navegar('registro') }, icono('mas'), 'Registrar operación')), el('div', {}, zonaResumen, zonaUltimas)),

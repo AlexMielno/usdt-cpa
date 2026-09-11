@@ -1,5 +1,5 @@
 /** Primera vez: clave de enlace + nombre del dispositivo + crear PIN (+ huella si hay). */
-import { el, montar, toast, icono } from '../ui.js';
+import { el, montar, toast, icono, ayuda } from '../ui.js';
 import { crearTecladoPin } from './teclado.js';
 import * as almacen from '../almacen.js';
 import { biometria, nombreDispositivoSugerido, esMovil } from '../nativo.js';
@@ -27,9 +27,9 @@ export function pantallaBienvenida({ alTerminar }) {
       el('p.texto-suave', {}, 'Control de compra y venta de USDT con tasa BCV y Binance P2P.'),
       el('div.tarjeta', { estilo: { width: '100%', textAlign: 'left', marginTop: '14px' } },
         el('h2', {}, 'Enlazar este dispositivo'),
-        el('div.campo', {}, el('label', {}, 'Clave de enlace ', ver), inputClave,
+        el('div.campo', {}, el('label', {}, 'Clave de enlace ', ver, ayuda('claveEnlace')), inputClave,
           el('div.ayuda', {}, 'La genera el backend con configuracionInicial() en Apps Script. Se guarda cifrada con tu PIN.')),
-        el('div.campo', {}, el('label', {}, 'Nombre de este dispositivo'), inputDisp,
+        el('div.campo', {}, el('label', {}, 'Nombre de este dispositivo', ayuda('nombreDispositivo')), inputDisp,
           el('div.ayuda', {}, 'Queda registrado en cada operación que hagas desde aquí.')),
         el('button.btn', { type: 'button', onClick: () => {
           datos.claveEnlace = inputClave.value.trim();
@@ -46,7 +46,7 @@ export function pantallaBienvenida({ alTerminar }) {
     const t = crearTecladoPin({ alCompletar });
     return el('div.pantalla.centrada', {},
       el('div', { estilo: { color: 'var(--amarillo)' } }, icono('candado')),
-      el('div.titulo-grande', {}, titulo),
+      el('div.titulo-grande', {}, titulo, ayuda('pin')),
       el('p.texto-suave', {}, sub),
       t.elemento,
       el('button.enlace', { type: 'button', estilo: { marginTop: '18px' }, onClick: () => { paso = 1; render(); } }, 'Volver'),

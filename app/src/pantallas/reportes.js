@@ -1,5 +1,5 @@
 /** Reportes por rango de fechas con exportación a PDF. */
-import { el, montar, toast, icono, cargando } from '../ui.js';
+import { el, montar, toast, icono, cargando, ayuda } from '../ui.js';
 import { cabecera, conNavegacion } from './cascaron.js';
 import { estado, en } from '../estado.js';
 import * as datos from '../datos.js';
@@ -11,7 +11,8 @@ const RANGOS = [['mes', 'Este mes'], ['mes_anterior', 'Mes anterior'], ['30', '3
 
 export function pantallaReportes({ manejarError }) {
   const cfg = window.CONFIG_USDT || {};
-  let tipo = 'utilidades', cartera = estado.cartera, rango = 'mes';
+  const carteras = cfg.CARTERAS || ['CPA BEJUMA'];
+  let tipo = 'utilidades', cartera = carteras.includes(estado.cartera) ? estado.cartera : carteras[0], rango = 'mes';
   let { desde, hasta } = rangoPredefinido(rango);
   const zona = el('div');
 
@@ -22,7 +23,7 @@ export function pantallaReportes({ manejarError }) {
   const chipsRango = el('div.chips', { estilo: { marginBottom: '10px' } });
   const pintarChipsRango = () => chipsRango.replaceChildren(...RANGOS.map(([k, t]) => el('button.chip', { type: 'button', clase: rango === k ? 'activo' : '', onClick: () => { rango = k; ({ desde, hasta } = rangoPredefinido(k)); iDesde.value = desde; iHasta.value = hasta; pintarChipsRango(); pintar(); } }, t)));
   const chipsCartera = el('div.chips', { estilo: { marginBottom: '10px' } });
-  const pintarChipsCartera = () => chipsCartera.replaceChildren(...[...(cfg.CARTERAS || []), 'AMBAS'].map(c => el('button.chip', { type: 'button', clase: cartera === c ? 'activo' : '', onClick: () => { cartera = c; pintarChipsCartera(); pintar(); } }, c)));
+  const pintarChipsCartera = () => chipsCartera.replaceChildren(...(carteras.length > 1 ? [...carteras, 'AMBAS'] : carteras).map(c => el('button.chip', { type: 'button', clase: cartera === c ? 'activo' : '', onClick: () => { cartera = c; pintarChipsCartera(); pintar(); } }, c)));
   const selTipo = el('div.selector');
   const pintarTipo = () => selTipo.replaceChildren(...TIPOS.map(([k, t]) => el('button', { type: 'button', clase: tipo === k ? 'activo' : '', estilo: { fontSize: '12.5px', padding: '9px 4px' }, onClick: () => { tipo = k; pintarTipo(); pintar(); } }, t)));
   pintarChipsRango(); pintarChipsCartera(); pintarTipo();
@@ -57,7 +58,7 @@ export function pantallaReportes({ manejarError }) {
       el('div.tarjeta.resaltada', {},
         el('h2', {}, el('span', {}, rep.titulo), el('span.accion.mini', {}, rep.subtitulo)),
         el('div.grid-2', {}, rep.kpis.map(k => el('div.dato', {}, el('div.etq', {}, k.etq), el('div.val.peq', { clase: k.clase || '' }, k.val), k.sub ? el('div.nota', {}, k.sub) : null))),
-        el('div', { estilo: { marginTop: '12px' } }, btnPdf),
+        el('div', { estilo: { marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' } }, btnPdf, ayuda('exportar')),
       ),
       tablas.length ? tablas : el('div.vacio', {}, 'Sin operaciones en este período.'),
       rep.nota ? el('p.mini', {}, rep.nota) : null,
@@ -66,7 +67,9 @@ export function pantallaReportes({ manejarError }) {
 
   const contenido = el('div.pantalla', {},
     cabecera('Reportes', 'Para la gerencia · exportables a PDF'),
-    selTipo, chipsCartera, chipsRango,
+    el('div.selector-titulo', {}, 'Tipo de reporte', ayuda('tiposReporte')), selTipo,
+    carteras.length > 1 ? el('div.selector-titulo', {}, 'Cartera', ayuda('carteraReporte')) : null, carteras.length > 1 ? chipsCartera : null,
+    el('div.selector-titulo', {}, 'Período', ayuda('rango')), chipsRango,
     el('div.fila', { estilo: { marginBottom: '12px' } }, el('div.campo', { estilo: { marginBottom: 0 } }, el('label', {}, 'Desde'), iDesde), el('div.campo', { estilo: { marginBottom: 0 } }, el('label', {}, 'Hasta'), iHasta)),
     zona,
   );

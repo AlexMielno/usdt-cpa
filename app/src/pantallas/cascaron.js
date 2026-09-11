@@ -1,5 +1,5 @@
 /** Cascarón común: cabecera con marca y selector de cartera + barra de navegación inferior. */
-import { el, icono } from '../ui.js';
+import { el, icono, ayuda } from '../ui.js';
 import { estado, navegar } from '../estado.js';
 import { cambiarCartera } from '../datos.js';
 
@@ -15,9 +15,10 @@ export function cabecera(titulo, sub, extra) {
 
 export function selectorCartera(alCambiar) {
   const carteras = (window.CONFIG_USDT || {}).CARTERAS || ['CPA BEJUMA', 'PANAMERICANA'];
-  const cont = el('div.chips', { estilo: { marginBottom: '12px' } });
+  const cont = el('div.chips', { estilo: { marginBottom: '12px', alignItems: 'center' } });
+  if (carteras.length < 2) return el('div');
   const pintar = () => {
-    cont.replaceChildren(...carteras.map(c => el('button.chip', { type: 'button', clase: c === estado.cartera ? 'activo' : '', onClick: async () => { await cambiarCartera(c); pintar(); if (alCambiar) alCambiar(c); } }, c)));
+    cont.replaceChildren(...carteras.map(c => el('button.chip', { type: 'button', clase: c === estado.cartera ? 'activo' : '', onClick: async () => { await cambiarCartera(c); pintar(); if (alCambiar) alCambiar(c); } }, c)), ayuda('cartera'));
   };
   pintar();
   return cont;

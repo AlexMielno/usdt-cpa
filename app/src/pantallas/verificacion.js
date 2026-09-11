@@ -3,7 +3,7 @@
  * Si no hay TURNSTILE_SITEKEY configurada, abre sesión directamente (el backend también lo permite
  * solo cuando no tiene secreto configurado).
  */
-import { el, montar, icono } from '../ui.js';
+import { el, montar, icono, ayuda } from '../ui.js';
 import * as api from '../api.js';
 
 let scriptCargado = null;
@@ -69,7 +69,7 @@ export function pantallaVerificacion({ alListo, alDesvincular }) {
 
   montar(el('div.pantalla.centrada', {},
     el('div', { estilo: { color: 'var(--amarillo)' } }, icono('escudo')),
-    el('div.titulo-grande', {}, 'Verificación'),
+    el('div.titulo-grande', {}, 'Verificación', ayuda('verificacion')),
     estado, caja, errores,
     el('p.mini', {}, 'Protección anti-bot de Cloudflare + sesión firmada de 12 horas.'),
   ));

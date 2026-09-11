@@ -16,7 +16,9 @@ export async function restaurarLocal() {
   if (o) { estado.operaciones = o.datos || []; estado.operacionesHora = o.hora || 0; }
   const h = await almacen.leer('historico');
   if (h) estado.historico = h;
-  estado.cartera = (await almacen.leer('cartera')) || estado.cartera;
+  const carteras = (window.CONFIG_USDT || {}).CARTERAS || [];
+  const guardada = await almacen.leer('cartera');
+  estado.cartera = carteras.includes(guardada) ? guardada : (carteras[0] || estado.cartera);
 }
 
 export async function cambiarCartera(c) {
