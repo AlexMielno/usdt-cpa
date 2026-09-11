@@ -109,10 +109,10 @@ de Android), y ambas cargan la interfaz desde el origen **`localhost`**. Por eso
 1. En el panel de Cloudflare ▸ Turnstile ▸ *Add widget*: nombre "USDT CPA", **hostname: `localhost`**
    (Cloudflare lo acepta expresamente para apps locales/de desarrollo). Modo *Managed*.
 2. Copia la **Site Key** en `app/www/config.js` → `TURNSTILE_SITEKEY` y vuelve a compilar (.exe y .apk).
-3. Copia la **Secret Key** al backend: en el editor de Apps Script ejecuta una vez
-   `establecerTurnstile('TU_SECRET_KEY', 'localhost')` (escríbelo temporalmente en una función de prueba o
-   en el campo de ejecución) — o bien *Configuración del proyecto ▸ Propiedades del script*:
-   `TURNSTILE_SECRET` = secreto, `TURNSTILE_HOSTNAMES` = `localhost`.
+3. Copia la **Secret Key** al backend (la Site Key ya está en `config.js`): en el editor de Apps Script,
+   *Configuración del proyecto ▸ Propiedades del script ▸ Añadir propiedad*:
+   `TURNSTILE_SECRET` = la secret key, `TURNSTILE_HOSTNAMES` = `localhost`. (Equivale a ejecutar
+   `establecerTurnstile('SECRET', 'localhost')` desde una función temporal.)
 4. Mientras la sitekey esté vacía y el secreto no exista, la app y el backend funcionan sin el desafío
    (útil para probar primero la conexión).
 
@@ -170,7 +170,8 @@ Cómo publicar una versión (una vez creado el repositorio en GitHub, público p
 descargar las releases sin token):
 
 ```powershell
-cd "C:epositorios\Compra Venta USDT"
+cd "C:
+epositorios\Compra Venta USDT"
 git init; git add .; git commit -m "USDT CPA"          # solo la primera vez
 gh repo create usdt-cpa --public --source . --push     # solo la primera vez (crea AlexMielno/usdt-cpa)
 # secretos para firmar el APK en la nube (una vez): ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASS, ANDROID_KEY_ALIAS, ANDROID_KEY_PASS
