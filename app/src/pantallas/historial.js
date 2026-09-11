@@ -44,14 +44,20 @@ export function verDetalle(o) {
         fila('Observaciones', o.observaciones || '—'),
         fila('Registrado desde', (o.dispositivo || '—') + ' · ' + (o.registrado ? new Date(o.registrado).toLocaleString('es-VE') : '')),
       ),
-      o.estado === 'ACTIVA' ? el('div.acciones', {},
-        el('button.btn.secundario', { type: 'button', onClick: () => { cerrar(); editarNotas(o); } }, 'Editar notas'),
-        el('button.btn.peligro', { type: 'button', onClick: async () => {
+      el('div.acciones', {},
+        o.estado === 'ACTIVA' ? el('button.btn.secundario', { type: 'button', onClick: () => { cerrar(); editarNotas(o); } }, 'Editar notas') : null,
+        o.estado === 'ACTIVA' ? el('button.btn.peligro', { type: 'button', onClick: async () => {
           const motivo = await confirmar({ titulo: 'Anular ' + o.id, mensaje: 'La operación quedará marcada como ANULADA en la hoja (no se borra) y dejará de contar en la cartera.', textoOk: 'Anular', peligro: true, campo: { etiqueta: 'Motivo', placeholder: 'Ej. registrada dos veces', obligatorio: true } });
           if (!motivo) return;
           try { await datos.anularOperacion(o.id, motivo); toast('Operación anulada', 'ok'); cerrar(); } catch (e) { toast(e.message, 'error'); }
-        } }, 'Anular'),
-      ) : null,
+        } }, 'Anular') : null,
+        el('button.btn.peligro', { type: 'button', onClick: async () => {
+          const conf = await confirmar({ titulo: 'Borrar ' + o.id, mensaje: 'Se elimina la fila de la hoja para siempre y no se puede deshacer. Si solo quieres que deje de contar, usa Anular. Escribe BORRAR para confirmar.', textoOk: 'Borrar definitivamente', peligro: true, campo: { etiqueta: 'Confirmación', placeholder: 'BORRAR', obligatorio: true } });
+          if (!conf) return;
+          if (String(conf).trim().toUpperCase() !== 'BORRAR') { toast('Para borrar debes escribir BORRAR', 'error'); return; }
+          try { await datos.borrarOperacion(o.id); toast('Operación ' + o.id + ' borrada', 'ok'); cerrar(); } catch (e) { toast(e.message, 'error'); }
+        } }, 'Borrar'),
+      ),
     ],
   });
 }

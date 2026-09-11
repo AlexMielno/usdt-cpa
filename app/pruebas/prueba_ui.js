@@ -84,7 +84,25 @@ async function main() {
   // Historial y detalle
   await clicTexto('Historial'); await esperar(1200); await foto('07-historial');
   await clic('.op'); await esperar(500); await foto('08-detalle');
-  await js(`document.querySelector('.modal .cerrar').click()`);
+  // Anular: pide motivo obligatorio y la fila queda tachada como ANULADA
+  const clicUltimo = (sel) => js(`(function(){const l=[...document.querySelectorAll('${sel}')].filter(x=>x.offsetParent!==null); if(!l.length) throw new Error('no existe ${sel}'); l[l.length-1].click(); return true;})()`);
+  await clicTexto('Anular'); await esperar(300);
+  await clicUltimo('.modal .btn.peligro'); await esperar(300);            // sin motivo: no debe anular
+  if (!await js(`!!document.querySelector('.modal input.error')`)) errores.push('Anular no exigió el motivo');
+  await escribir('.modal input[type=text]', 'prueba de anulación');
+  await clicUltimo('.modal .btn.peligro'); await esperar(2000); await foto('18-anulada');
+  t = await texto();
+  if (!/ANULADA/.test(t)) errores.push('La operación no quedó como ANULADA tras anular');
+  const opsAntes = await js(`document.querySelectorAll('.op').length`);
+  // Borrar: exige escribir BORRAR y elimina la fila
+  await clic('.op.anulada'); await esperar(400);
+  await clicTexto('Borrar'); await esperar(300); await foto('19-confirmar-borrar');
+  await escribir('.modal input[type=text]', 'BORRAR');
+  await clicUltimo('.modal .btn.peligro'); await esperar(2000); await foto('20-borrada');
+  const opsDespues = await js(`document.querySelectorAll('.op').length`);
+  if (opsDespues !== opsAntes - 1) errores.push('Borrar no eliminó la operación (' + opsAntes + ' -> ' + opsDespues + ')');
+  if (/ANULADA/.test(await texto())) errores.push('La operación anulada sigue apareciendo tras borrarla');
+  console.log('anular/borrar: operaciones ' + opsAntes + ' -> ' + opsDespues);
   // Ayuda: burbuja al pasar el mouse y ventana al hacer clic
   await clicTexto('Inicio'); await esperar(800);
   await js(`(function(){const b=document.querySelector('.btn-ayuda'); b.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true})); return true;})()`);

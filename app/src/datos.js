@@ -72,6 +72,13 @@ export async function anularOperacion(id, motivo) {
   emitir('operaciones', estado.operaciones);
 }
 
+export async function borrarOperacion(id) {
+  await api.borrar(id);
+  estado.operaciones = estado.operaciones.filter(o => o.id !== id);
+  await almacen.guardar('operaciones', { datos: estado.operaciones, hora: estado.operacionesHora });
+  emitir('operaciones', estado.operaciones);
+}
+
 export async function editarOperacion(id, cambios) {
   await api.editar(id, cambios);
   estado.operaciones = estado.operaciones.map(o => o.id === id ? Object.assign({}, o, cambios) : o);

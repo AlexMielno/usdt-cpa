@@ -85,11 +85,21 @@ function operacionDesdeFila_(f) {
   return o;
 }
 
+/**
+ * Siguiente ID: contador en propiedades del script (ULTIMO_ID) reconciliado con la última fila, para que
+ * un ID nunca se reutilice aunque se borre la última operación.
+ */
 function siguienteId_(hoja) {
+  const props = props_();
+  let n = parseInt(props.getProperty('ULTIMO_ID') || '0', 10) || 0;
   const ultima = hoja.getLastRow();
-  if (ultima < 2) return 'OP-000001';
-  const ultimoId = String(hoja.getRange(ultima, 1).getValue());
-  const n = parseInt((ultimoId.match(/(\d+)$/) || [0, 0])[1], 10) + 1;
+  if (ultima >= 2) {
+    const ultimoId = String(hoja.getRange(ultima, 1).getValue());
+    const m = parseInt((ultimoId.match(/(\d+)$/) || [0, 0])[1], 10) || 0;
+    if (m > n) n = m;
+  }
+  n += 1;
+  props.setProperty('ULTIMO_ID', String(n));
   return 'OP-' + ('000000' + n).slice(-6);
 }
 
@@ -135,6 +145,29 @@ function anularOperacion_(datos, sesion) {
     lock.releaseLock();
   }
   return { id: id, estado: 'ANULADA' };
+}
+
+/** Acción "borrar": elimina la fila definitivamente (a diferencia de anular). La app pide escribir BORRAR. */
+function borrarOperacion_(datos, sesion) {
+  const id = texto_((datos || {}).id, 20);
+  if (!id) throw new ErrorApi('dato_invalido', 'Falta el ID.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const hoja = hoja_(CONFIG.HOJA_BD);
+    const ids = hoja.getRange(2, 1, Math.max(hoja.getLastRow() - 1, 1), 1).getValues().map(r => String(r[0]));
+    const idx = ids.indexOf(id);
+    if (idx === -1) throw new ErrorApi('no_existe', 'No existe la operación ' + id, 404);
+    const fila = idx + 2;
+    const op = operacionDesdeFila_(hoja.getRange(fila, 1, 1, COLUMNAS.length).getValues()[0]);
+    hoja.deleteRow(fila);
+    SpreadsheetApp.flush();
+    // Queda rastro en el registro de ejecuciones de Apps Script por si hay que reconstruirla
+    console.log('BORRADA ' + id + ' por ' + texto_(sesion.d, 60) + ': ' + JSON.stringify(op));
+  } finally {
+    lock.releaseLock();
+  }
+  return { id: id, borrada: true };
 }
 
 /** Acción "editar": permite corregir solo observaciones, contraparte, método de pago y referencia (datos no financieros). */

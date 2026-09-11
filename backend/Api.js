@@ -61,6 +61,7 @@ function ejecutar_(accion, datos, sesion) {
     case 'listar': return listarOperaciones_(datos);
     case 'registrar': return registrarOperacion_(datos, sesion);
     case 'anular': return anularOperacion_(datos, sesion);
+    case 'borrar': return borrarOperacion_(datos, sesion);
     case 'editar': return editarOperacion_(datos, sesion);
     case 'resumen': return resumenCartera_();
     default: throw new ErrorApi('accion_desconocida', 'Acción no reconocida: ' + accion, 404);

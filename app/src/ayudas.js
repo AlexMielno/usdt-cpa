@@ -26,7 +26,7 @@ export const AYUDAS = {
   },
   ultimas: {
     titulo: 'Últimas operaciones',
-    texto: 'Las 5 más recientes de la cartera. Toca una para ver el detalle completo, anularla o corregir sus notas. En "Ver todas" está el historial con filtros.',
+    texto: 'Las 5 más recientes de la cartera. Toca una para ver el detalle completo, anularla, borrarla o corregir sus notas. En "Ver todas" está el historial con filtros.',
     ejemplos: ['C = compra (verde), V = venta (rojo), tachada = anulada.'],
   },
   actualizar: {
@@ -103,8 +103,8 @@ export const AYUDAS = {
   },
   detalleOperacion: {
     titulo: 'Detalle de una operación',
-    texto: 'Toca cualquier fila para ver todos los campos. "Anular" la marca como ANULADA en la hoja (no se borra, queda el motivo) y deja de contar. "Editar notas" solo cambia las observaciones; para corregir montos, anula y registra de nuevo.',
-    ejemplos: ['Registraste dos veces la misma compra → anula la duplicada con motivo "duplicada".'],
+    texto: 'Toca cualquier fila para ver todos los campos. "Anular" la marca como ANULADA en la hoja (queda el motivo, quién y cuándo) y deja de contar: es lo recomendable para dejar rastro. "Borrar" elimina la fila para siempre (pide escribir BORRAR). "Editar notas" solo cambia las observaciones; para corregir montos, anula o borra y registra de nuevo.',
+    ejemplos: ['Registraste dos veces la misma compra → anula la duplicada con motivo "duplicada".', 'Hiciste operaciones de prueba mientras aprendías → bórralas para que no ensucien los reportes.'],
   },
   // ---------- reportes ----------
   tiposReporte: {

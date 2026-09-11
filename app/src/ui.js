@@ -66,7 +66,9 @@ export function modal({ titulo, contenido, alCerrar }) {
 /** Confirmación simple. Devuelve Promise<boolean>. */
 export function confirmar({ titulo, mensaje, textoOk = 'Confirmar', peligro = false, campo }) {
   return new Promise(resolve => {
-    let entrada = null;
+    let entrada = null, resuelto = false;
+    // cerrar() dispara alCerrar (que resuelve false): por eso se resuelve ANTES de cerrar y solo una vez
+    const fin = (v) => { if (!resuelto) { resuelto = true; resolve(v); } };
     const m = modal({
       titulo,
       contenido: (cerrar) => {
@@ -76,15 +78,15 @@ export function confirmar({ titulo, mensaje, textoOk = 'Confirmar', peligro = fa
           partes.push(el('div.campo', {}, el('label', {}, campo.etiqueta), entrada));
         }
         partes.push(el('div.acciones', {},
-          el('button.btn.fantasma', { type: 'button', onClick: () => { cerrar(); resolve(false); } }, 'Cancelar'),
+          el('button.btn.fantasma', { type: 'button', onClick: () => { fin(false); cerrar(); } }, 'Cancelar'),
           el('button.btn', { type: 'button', clase: peligro ? 'peligro' : '', onClick: () => {
             if (campo && campo.obligatorio && !(entrada.value || '').trim()) { entrada.classList.add('error'); return; }
-            cerrar(); resolve(campo ? (entrada.value || '').trim() : true);
+            fin(campo ? (entrada.value || '').trim() : true); cerrar();
           } }, textoOk),
         ));
         return partes;
       },
-      alCerrar: () => resolve(false),
+      alCerrar: () => fin(false),
     });
     if (entrada) setTimeout(() => entrada.focus(), 50);
   });

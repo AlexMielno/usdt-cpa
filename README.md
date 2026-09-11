@@ -81,7 +81,7 @@ Cada uno se exporta a **PDF** con membrete (logo, empresa, período, fecha de ge
 5. **Token de sesión** firmado (HMAC-SHA256) con vencimiento de 12 h; todas las acciones de datos lo exigen.
 6. **Anti fuerza bruta** en el backend (10 fallos → 15 min de bloqueo) y **bloqueo por inactividad** en la app (5 min).
 7. Electron: aislamiento de contexto, sandbox, sin Node en la página, CSP estricta, solo HTTPS al backend.
-8. Las filas **nunca se borran**: anular marca `ESTADO = ANULADA` con motivo, dispositivo y fecha.
+8. **Anular** marca `ESTADO = ANULADA` con motivo, dispositivo y fecha (la fila queda como rastro y deja de contar). **Borrar** (desde v1.3) elimina la fila definitivamente tras escribir BORRAR; el ID no se reutiliza porque el contador vive en la propiedad `ULTIMO_ID` del script, y la fila borrada queda en el registro de ejecuciones de Apps Script.
 
 ---
 
