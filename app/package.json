@@ -10,7 +10,7 @@
   "scripts": {
     "construir:web": "esbuild src/main.js --bundle --format=iife --target=chrome110 --outfile=www/js/app.js --log-level=warning",
     "escritorio": "npm run construir:web && electron .",
-    "compilar:exe": "npm run construir:web && electron-builder --win --x64",
+    "compilar:exe": "npm run construir:web && electron-builder --win --x64 --publish never",
     "android:sincronizar": "npm run construir:web && cap sync android",
     "android:iconos": "capacitor-assets generate --android --iconBackgroundColor #0b0e11 --iconBackgroundColorDark #0b0e11 --splashBackgroundColor #0b0e11 --splashBackgroundColorDark #0b0e11",
     "compilar:apk": "npm run android:sincronizar && cd android && gradlew.bat assembleRelease"
