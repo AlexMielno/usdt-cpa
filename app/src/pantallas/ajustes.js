@@ -7,7 +7,7 @@ import * as api from '../api.js';
 import { biometria, esMovil, plataforma, abrirEnlaceExterno } from '../nativo.js';
 import { crearTecladoPin } from './teclado.js';
 import { comprobarActualizacion, descargar, esInstaladorWindows } from '../actualizador.js';
-import { estado, emitir } from '../estado.js';
+import { estado, emitir, en } from '../estado.js';
 import { comisionesConfiguradas, guardarComisiones, reglasPorDefecto } from '../comisiones.js';
 import { aNumero, num } from '../formato.js';
 
@@ -101,6 +101,33 @@ export function pantallaAjustes({ alDesvincular, alBloquear }) {
   };
   comisionesConfiguradas().then(pintarComisiones);
 
+  // ---- diagnóstico: últimos errores de la app, copiables para enviarlos al soporte
+  const zonaDiagnostico = el('div');
+  const textoDiagnostico = () => {
+    const l = ['USDT CPA ' + (cfg.VERSION || '') + ' · ' + plataforma + ' · ' + navigator.userAgent, 'Pantalla: ' + (estado.pantalla || '') + ' · ' + new Date().toISOString(),
+      'Tasas en memoria: ' + (estado.tasas ? 'sí (' + (estado.tasas.actualizado || '') + ')' : 'no') + ' · histórico: ' + (Array.isArray(estado.historico) ? estado.historico.length : typeof estado.historico) + ' · operaciones: ' + (estado.operaciones || []).length,
+      'Errores (' + estado.errores.length + '):'];
+    estado.errores.forEach(e => l.push('- ' + e.hora + ' [' + e.origen + '] ' + e.mensaje + (e.pila ? '\n    ' + e.pila : '')));
+    return l.join('\n');
+  };
+  const copiarTexto = async (t) => {
+    try { await navigator.clipboard.writeText(t); return true; } catch (e) { /* sin permiso: método clásico */ }
+    const ta = el('textarea', { estilo: { position: 'fixed', opacity: 0 } }); ta.value = t; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; } ta.remove(); return ok;
+  };
+  const pintarDiagnostico = () => {
+    const errs = estado.errores;
+    zonaDiagnostico.replaceChildren(
+      el('p.mini', {}, errs.length ? 'Últimos errores registrados en esta sesión (los más recientes primero).' : 'Sin errores en esta sesión. Si una pantalla se queda vacía, vuelve aquí y copia el diagnóstico.'),
+      errs.length ? el('div', { estilo: { maxHeight: '220px', overflow: 'auto', marginBottom: '10px' } }, errs.slice(0, 10).map(e => el('div', { estilo: { fontSize: '12px', padding: '6px 0', borderBottom: '1px solid var(--borde)' } },
+        el('div', {}, el('b', {}, e.mensaje)), el('div.mini', {}, new Date(e.hora).toLocaleTimeString('es-VE') + ' · ' + e.origen + (e.pila ? ' · ' + e.pila.slice(0, 160) : ''))))) : null,
+      el('div', { estilo: { display: 'flex', gap: '8px', flexWrap: 'wrap' } },
+        el('button.btn.secundario.peq', { type: 'button', onClick: async () => { toast((await copiarTexto(textoDiagnostico())) ? 'Diagnóstico copiado: pégalo en el chat de soporte' : 'No se pudo copiar', 'ok'); } }, icono('copiar'), 'Copiar diagnóstico'),
+        errs.length ? el('button.btn.secundario.peq', { type: 'button', onClick: () => { estado.errores.length = 0; emitir('errores', estado.errores); } }, 'Limpiar') : null,
+      ),
+    );
+  };
+
   const contenido = el('div.pantalla', {},
     cabecera('Ajustes', 'Seguridad y dispositivo'),
     el('div.grid-desktop-2', {},
@@ -140,8 +167,12 @@ export function pantallaAjustes({ alDesvincular, alBloquear }) {
           zonaActualizacion,
           el('p.mini', { estilo: { marginTop: '10px' } }, 'CPA Bejuma C.A. · Panamericana. Diferencial positivo = a favor; negativo = en contra.'),
         ),
+        el('div.tarjeta', {}, el('h2', {}, el('span', {}, 'Diagnóstico', ayuda('diagnostico'))),
+          zonaDiagnostico),
       ),
     ),
   );
   montar(conNavegacion(contenido, 'ajustes'));
+  pintarDiagnostico();
+  const quitarErrores = en('errores', () => { if (document.body.contains(contenido)) pintarDiagnostico(); else quitarErrores(); });
 }

@@ -37,6 +37,8 @@ class Hoja {
 }
 const encabezadoBD = ['ID', 'FECHA', 'HORA', 'CARTERA', 'TIPO', 'MONTO USDT', 'TASA', 'TOTAL VES', 'COMISION USDT', 'COMISION VES', 'USDT NETO', 'VES NETO', 'TASA EFECTIVA', 'TASA BCV', 'TASA P2P REF', 'DIF BCV', 'DIF BCV %', 'DIF P2P', 'EQUIV USD', 'CONTRAPARTE', 'METODO', 'REF', 'OBS', 'ESTADO', 'DISPOSITIVO', 'REGISTRADO', 'MOTIVO'];
 const hojas = { BD_USDT: new Hoja('BD_USDT', [encabezadoBD]), TASAS: new Hoja('TASAS', [['FECHA HORA', 'BCV', 'BCV FECHA VALOR', 'PC MEJOR', 'PC PROM5', 'PV MEJOR', 'PV PROM5', 'BRECHA', 'FUENTE']]) };
+// Historial de tasas de ejemplo (como lo deja el disparador real) para que la gráfica de inicio se pruebe
+for (let i = 8; i >= 1; i--) hojas.TASAS.appendRow([new Date(Date.now() - i * 1800000), 832.4883, new Date('2026-09-11T16:00:00Z'), 958, 956.14 + i * 0.3, 954.69, 957.62 - i * 0.2, 0.1503, 'bcv.org.ve']);
 
 // ------------------------------------------------------------------ servicios emulados
 const propiedades = { API_KEY: CLAVE_PRUEBA, SESSION_SECRET: 'secreto-de-sesion-local' };

@@ -149,6 +149,12 @@ Backend: edita `backend/*.js` y luego `clasp push -f` seguido de
 
 Pruebas locales sin tocar Google: `node herramientas/simulador_backend.js` (clave `CLAVE-DE-PRUEBA-LOCAL-1234`)
 y `cd app; npx electron pruebas/prueba_ui.js` (recorre toda la app y deja capturas en `app/pruebas/capturas`).
+También `cd app; npx electron pruebas/lanzar_real.js 1` y luego `... 2` arranca la app **real** de Electron (electron/main.js)
+con un perfil temporal contra el simulador: la fase 1 enlaza y crea el PIN, la fase 2 reabre y desbloquea con PIN, provoca
+un error simulado y comprueba que aparece en Ajustes ▸ Diagnóstico.
+
+**Si una pantalla queda vacía o falla algo:** la app muestra un aviso rojo y guarda el error; en Ajustes ▸ Diagnóstico está
+la lista con botón *Copiar diagnóstico* (versión, plataforma y errores, sin PIN ni clave) para pegarla en el chat de soporte.
 
 Alternativa sin instalar nada: subir el repositorio a GitHub; el workflow `compilar.yml` genera el .exe y el
 .apk como *artifacts* (para firmar el APK en la nube hay que cargar el keystore como secreto, ver el archivo).

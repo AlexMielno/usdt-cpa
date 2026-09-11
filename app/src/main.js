@@ -20,7 +20,7 @@ import { pantallaHistorial } from './pantallas/historial.js';
 import { pantallaAjustes } from './pantallas/ajustes.js';
 import { pantallaReportes } from './pantallas/reportes.js';
 import { comprobarActualizacion } from './actualizador.js';
-import { estado, emitir } from './estado.js';
+import { estado, emitir, registrarError } from './estado.js';
 
 let pantallaActual = 'inicio';
 let pendiente = null;          // pantalla a la que volver tras verificar
@@ -28,7 +28,7 @@ let ultimaActividad = Date.now();
 
 function manejarError(e) {
   if (e instanceof api.SesionRequerida || (e && e.codigo === 'sesion_requerida')) { pendiente = pantallaActual; irAVerificacion(); return; }
-  console.error(e);
+  registrarError(e, pantallaActual);
   toast(e && e.message ? e.message : String(e), 'error', 5000);
 }
 
@@ -52,6 +52,7 @@ function irAVerificacion() {
 function navegar(nombre) {
   if (!almacen.estaDesbloqueado()) { pendiente = nombre; irABloqueo(); return; }
   pantallaActual = nombre;
+  estado.pantalla = nombre || 'inicio';
   const ctx = { manejarError, alDesvincular: irABienvenida, alBloquear: irABloqueo };
   switch (nombre) {
     case 'registro': return pantallaRegistro(ctx);
@@ -61,6 +62,7 @@ function navegar(nombre) {
     default: pantallaActual = 'inicio'; return pantallaInicio(ctx);
   }
 }
+
 definirNavegar(navegar);
 
 // ---- bloqueo por inactividad y al ocultar la app ----
@@ -89,7 +91,11 @@ if (window.electronUSDT && window.electronUSDT.actualizador) {
 setTimeout(comprobarVersionAlArrancar, 4000);
 
 // ---- arranque ----
-window.addEventListener('error', (ev) => { console.error(ev.error || ev.message); });
+window.addEventListener('error', (ev) => {
+  const e = ev.error || new Error(ev.message || 'Error');
+  registrarError(e, pantallaActual);
+  toast('Error en la pantalla: ' + (e.message || ev.message || '') + ' (ver Ajustes ▸ Diagnóstico)', 'error', 8000);
+});
 window.addEventListener('unhandledrejection', (ev) => { manejarError(ev.reason || new Error('Error inesperado')); });
 
 (function arrancar() {

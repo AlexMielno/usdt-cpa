@@ -9,7 +9,7 @@ export function filaOperacion(o) {
   const anulada = o.estado === 'ANULADA';
   const dif = o.difP2pVes;
   return el('div.op', { clase: anulada ? 'anulada' : '', onClick: () => verDetalle(o) },
-    el('div.icono', { clase: anulada ? 'anulada' : o.tipo.toLowerCase() }, o.tipo === 'COMPRA' ? 'C' : 'V'),
+    el('div.icono', { clase: anulada ? 'anulada' : String(o.tipo || '').toLowerCase() }, o.tipo === 'COMPRA' ? 'C' : 'V'),
     el('div.centro', {},
       el('div.titulo', {}, num(o.montoUsdt, 2) + ' USDT @ ' + num(o.tasa, 2), anulada ? el('span.etiqueta.anulada', {}, 'ANULADA') : null),
       el('div.detalle', {}, fechaCorta(o.fecha) + ' ' + (o.hora || '') + (o.observaciones ? ' · ' + o.observaciones : (o.contraparte ? ' · ' + o.contraparte : '')))),

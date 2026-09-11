@@ -143,6 +143,11 @@ export const AYUDAS = {
     texto: 'Todo vive en tu Google Sheets: BD_USDT (una fila por operación), TASAS (histórico de tasas cada 30 min) y PANEL_USDT (resumen con fórmulas). Solo la app y el propietario pueden editarlas.',
     ejemplos: [],
   },
+  diagnostico: {
+    titulo: 'Diagnóstico',
+    texto: 'Lista los errores que la app haya encontrado en esta sesión (por ejemplo, si una sección de Inicio quedó vacía). "Copiar diagnóstico" copia la versión, la plataforma y esos errores para pegarlos en el chat de soporte. No incluye tu PIN ni la clave de enlace.',
+    ejemplos: ['Inicio no muestra las tasas: abre Ajustes ▸ Diagnóstico, pulsa "Copiar diagnóstico" y pégalo en el chat.'],
+  },
   acercaDe: {
     titulo: 'Acerca de y actualizaciones',
     texto: 'Versión instalada, plataforma y estado del anti-bot. "Buscar actualizaciones" consulta las versiones publicadas: en Windows instalado se descargan e instalan solas; en portable y Android se descarga el archivo y se instala encima (conserva tus datos).',

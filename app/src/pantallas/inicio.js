@@ -1,7 +1,7 @@
 /** Inicio: tasas del momento, estado de la cartera y últimas operaciones. */
 import { el, montar, toast, icono, cargando, ayuda } from '../ui.js';
 import { cabecera, selectorCartera, conNavegacion } from './cascaron.js';
-import { estado, navegar, en } from '../estado.js';
+import { estado, navegar, en, registrarError } from '../estado.js';
 import * as datos from '../datos.js';
 import { num, ves, pct, signo, haceCuanto, fechaCorta } from '../formato.js';
 import { resumirCartera } from '../calculos.js';
@@ -14,7 +14,17 @@ export function pantallaInicio({ manejarError }) {
   const zonaUltimas = el('div');
   const btnRefrescar = el('button.btn-icono', { type: 'button', title: 'Actualizar', 'aria-label': 'Actualizar', onClick: () => actualizar(true) }, icono('refrescar'));
 
-  const pintarTasas = () => {
+  /** Pinta una sección; si falla, muestra el motivo en su lugar en vez de dejar la pantalla vacía. */
+  const seguro = (zona, titulo, fn) => {
+    try { fn(); } catch (e) {
+      registrarError(e, 'inicio/' + titulo);
+      zona.replaceChildren(el('div.tarjeta', {}, el('h2', {}, titulo),
+        el('div.aviso-inline.error', {}, 'No se pudo mostrar esta sección: ' + (e && e.message ? e.message : e)),
+        el('p.mini', {}, 'Pulsa el botón de actualizar o revisa Ajustes ▸ Diagnóstico.')));
+    }
+  };
+
+  const pintarTasas = () => seguro(zonaTasas, 'Tasas del momento', () => {
     const t = estado.tasas;
     if (!t) { zonaTasas.replaceChildren(el('div.tarjeta', {}, el('h2', {}, 'Tasas del momento'), cargando('Consultando BCV y Binance…'))); return; }
     const bcv = t.bcv || {}, p2p = t.p2p || {};
@@ -32,9 +42,9 @@ export function pantallaInicio({ manejarError }) {
       ),
       sparkline(estado.historico),
     ));
-  };
+  });
 
-  const pintarResumen = () => {
+  const pintarResumen = () => seguro(zonaResumen, 'Cartera', () => {
     const r = resumirCartera(estado.operaciones, estado.cartera);
     const t = estado.tasas || {};
     const valorActualVes = t.p2p && t.p2p.venta ? r.saldoUsdt * (t.p2p.venta.promedio5 || t.p2p.venta.mejor) : 0;
@@ -54,17 +64,17 @@ export function pantallaInicio({ manejarError }) {
         el('tr', {}, el('td.etq', {}, 'Comprado / vendido'), el('td', {}, num(r.comprasUsdt, 2) + ' / ' + num(r.ventasUsdt, 2) + ' USDT')),
       ),
     ));
-  };
+  });
 
   const fila = (etq, v, suf) => el('tr', {}, el('td.etq', {}, etq), el('td', { clase: v > 0 ? 'positivo' : v < 0 ? 'negativo' : 'neutro' }, signo(v, 2) + suf));
 
-  const pintarUltimas = () => {
-    const ops = estado.operaciones.filter(o => o.cartera === estado.cartera).slice(0, 5);
+  const pintarUltimas = () => seguro(zonaUltimas, 'Últimas operaciones', () => {
+    const ops = (estado.operaciones || []).filter(o => o.cartera === estado.cartera).slice(0, 5);
     zonaUltimas.replaceChildren(el('div.tarjeta', {},
       el('h2', {}, el('span', {}, 'Últimas operaciones', ayuda('ultimas')), el('button.enlace.accion', { type: 'button', onClick: () => navegar('historial') }, 'Ver todas')),
       ops.length ? ops.map(o => filaOperacion(o)) : el('div.vacio', {}, 'Todavía no hay operaciones en esta cartera.'),
     ));
-  };
+  });
 
   const actualizar = async (forzar) => {
     btnRefrescar.classList.add('girando');
@@ -80,7 +90,7 @@ export function pantallaInicio({ manejarError }) {
   };
 
   const zonaActualizacion = el('div');
-  const pintarActualizacion = () => {
+  const pintarActualizacion = () => seguro(zonaActualizacion, 'Actualización', () => {
     const a = estado.actualizacion;
     if (!a || !a.hay) { zonaActualizacion.replaceChildren(); return; }
     const instalador = esInstaladorWindows();
@@ -89,7 +99,7 @@ export function pantallaInicio({ manejarError }) {
       a.descargada ? el('button.btn.peq', { type: 'button', onClick: () => window.electronUSDT.actualizador.instalar() }, 'Reiniciar e instalar')
         : (!instalador ? el('button.btn.peq', { type: 'button', onClick: () => descargar(a) }, icono('descargar'), 'Descargar') : null),
     ));
-  };
+  });
   pintarActualizacion();
 
   const contenido = el('div.pantalla', {},
@@ -108,10 +118,13 @@ export function pantallaInicio({ manejarError }) {
 
 /** Gráfica de tendencia sencilla (SVG) con las últimas capturas: P2P venta (amarillo) y BCV (gris). */
 function sparkline(hist) {
-  if (!hist || hist.length < 3) return el('div');
+  if (!Array.isArray(hist) || hist.length < 3) return el('div');
+  hist = hist.filter(h => h && typeof h === 'object');
+  if (hist.length < 3) return el('div');
   const W = 600, H = 54, m = 4;
   const series = [{ k: 'venta', color: 'var(--amarillo)' }, { k: 'bcv', color: 'var(--texto-3)' }];
-  const vals = hist.flatMap(h => [h.venta, h.bcv]).filter(v => v > 0);
+  const vals = hist.flatMap(h => [Number(h.venta), Number(h.bcv)]).filter(v => v > 0);
+  if (!vals.length) return el('div');
   const min = Math.min(...vals), max = Math.max(...vals) || 1;
   const x = i => m + (i / (hist.length - 1)) * (W - 2 * m);
   const y = v => H - m - ((v - min) / (max - min || 1)) * (H - 2 * m);
