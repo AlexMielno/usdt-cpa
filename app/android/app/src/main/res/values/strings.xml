@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">USDT CPA</string>
+    <string name="title_activity_main">USDT CPA</string>
+    <string name="package_name">ve.cpabejuma.usdt</string>
+    <string name="custom_url_scheme">ve.cpabejuma.usdt</string>
+</resources>

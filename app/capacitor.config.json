@@ -1,0 +1,22 @@
+{
+  "appId": "ve.cpabejuma.usdt",
+  "appName": "USDT CPA",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "localhost"
+  },
+  "android": {
+    "allowMixedContent": false,
+    "backgroundColor": "#0b0e11",
+    "buildOptions": {
+      "releaseType": "APK"
+    }
+  },
+  "plugins": {
+    "SplashScreen": {
+      "backgroundColor": "#0b0e11",
+      "launchShowDuration": 0
+    }
+  }
+}

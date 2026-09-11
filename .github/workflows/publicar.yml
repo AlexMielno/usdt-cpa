@@ -1,0 +1,69 @@
+# Flujo de versiones: al subir una etiqueta "vX.Y.Z" se compilan el .exe y el .apk y se publican en
+# GitHub Releases. Las apps instaladas consultan esas releases:
+#   - Windows (instalador NSIS): electron-updater descarga e instala la nueva versión sola (usa latest.yml).
+#   - Windows portable y Android: la app avisa "nueva versión" y abre la descarga del archivo.
+#
+# Cómo publicar una versión nueva desde la PC:
+#   node herramientas/nueva_version.js 1.2.0      (actualiza package.json, config.js y Android)
+#   git commit -am "v1.2.0" && git tag v1.2.0 && git push && git push --tags
+#
+# Secretos necesarios en el repositorio (Settings > Secrets and variables > Actions):
+#   ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASS, ANDROID_KEY_ALIAS, ANDROID_KEY_PASS  (firma del APK; ver compilar.yml)
+#   GITHUB_TOKEN lo pone GitHub automáticamente.
+name: Publicar versión
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm', cache-dependency-path: app/package-lock.json }
+      - run: npm ci
+        working-directory: app
+      - run: npm run construir:web
+        working-directory: app
+      - name: Compilar y publicar en la release (exe portable + instalador + latest.yml)
+        run: npx electron-builder --win --x64 --publish always
+        working-directory: app
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm', cache-dependency-path: app/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: 'temurin', java-version: '21' }
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+        working-directory: app
+      - run: npm run android:sincronizar
+        working-directory: app
+      - name: Preparar firma
+        if: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > app/android/release.jks
+          cat > app/android/keystore.properties <<EOF
+          storeFile=../release.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASS }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASS }}
+          EOF
+      - run: chmod +x gradlew && ./gradlew assembleRelease --no-daemon
+        working-directory: app/android
+      - name: Renombrar APK con la versión
+        run: cp app/android/app/build/outputs/apk/release/app-release.apk "USDT-CPA-${GITHUB_REF_NAME#v}.apk"
+      - name: Adjuntar APK a la release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: USDT-CPA-*.apk

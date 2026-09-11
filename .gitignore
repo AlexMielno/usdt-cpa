@@ -1,0 +1,24 @@
+# dependencias y compilados
+app/node_modules/
+app/www/js/app.js
+app/dist/
+app/android/build/
+app/android/app/build/
+app/android/.gradle/
+app/android/.idea/
+app/android/local.properties
+app/android/keystore.properties
+app/android/app/release/
+app/android/capacitor-cordova-android-plugins/build/
+app/pruebas/.electron-prueba/
+
+# secretos / credenciales
+*.jks
+*.keystore
+credenciales*.json
+.env
+
+# sistema
+Thumbs.db
+.DS_Store
+__pycache__/

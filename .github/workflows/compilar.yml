@@ -1,0 +1,63 @@
+# Compila el .exe (Windows) y el .apk (Android) en la nube de GitHub, como alternativa a hacerlo en la PC.
+# Los archivos quedan como "artifacts" de la ejecución (Actions > la ejecución > Artifacts).
+#
+# Para firmar el APK de release en la nube, crear estos secretos en el repositorio:
+#   ANDROID_KEYSTORE_B64  (contenido del .jks en base64:  [Convert]::ToBase64String([IO.File]::ReadAllBytes("C:\devtools\claves\usdt-cpa-release.jks")))
+#   ANDROID_KEYSTORE_PASS, ANDROID_KEY_ALIAS, ANDROID_KEY_PASS
+# Si no existen, se genera un APK de depuración (instalable, pero no actualiza la versión firmada).
+name: Compilar ejecutables
+
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/compilar.yml']
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm', cache-dependency-path: app/package-lock.json }
+      - run: npm ci
+        working-directory: app
+      - run: npm run compilar:exe
+        working-directory: app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: USDT-CPA-windows
+          path: |
+            app/dist/windows/*.exe
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: 'npm', cache-dependency-path: app/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: 'temurin', java-version: '21' }
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+        working-directory: app
+      - run: npm run android:sincronizar
+        working-directory: app
+      - name: Preparar firma (si hay secretos)
+        if: ${{ secrets.ANDROID_KEYSTORE_B64 != '' }}
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > app/android/release.jks
+          cat > app/android/keystore.properties <<EOF
+          storeFile=../release.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASS }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASS }}
+          EOF
+      - run: chmod +x gradlew && ./gradlew assembleRelease assembleDebug --no-daemon
+        working-directory: app/android
+      - uses: actions/upload-artifact@v4
+        with:
+          name: USDT-CPA-android
+          path: |
+            app/android/app/build/outputs/apk/release/*.apk
+            app/android/app/build/outputs/apk/debug/*.apk
