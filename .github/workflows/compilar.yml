@@ -41,6 +41,7 @@ jobs:
       - uses: actions/setup-java@v4
         with: { distribution: 'temurin', java-version: '21' }
       - uses: android-actions/setup-android@v3
+        with: { packages: 'platform-tools build-tools;35.0.0 platforms;android-35 platforms;android-36' }   # el paquete 'tools' ya no existe en el SDK
       - run: npm ci
         working-directory: app
       - run: npm run android:sincronizar
