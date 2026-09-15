@@ -3,11 +3,12 @@
  *
  *  - Windows (instalado con el instalador): electron-updater descarga la nueva versión en segundo plano
  *    y la instala al reiniciar la app (lo maneja electron/main.js; aquí solo se muestra el aviso).
- *  - Windows portable y Android: se consulta la última "release" y se ofrece descargar el archivo
- *    (.exe o .apk). En Android el sistema pide confirmar la instalación sobre la app existente
- *    (misma firma → conserva los datos).
+ *  - Windows portable: se consulta la última "release" y se abre la descarga del .exe.
+ *  - Android: se descarga el .apk dentro de la app y se abre el instalador del sistema, que pide
+ *    confirmar la actualización sobre la app existente (misma firma → conserva los datos).
  */
-import { http, plataforma, esEscritorio, abrirEnlaceExterno } from './nativo.js';
+import { http, plataforma, esEscritorio, abrirEnlaceExterno, descargarEInstalarApk } from './nativo.js';
+import { toast } from './ui.js';
 
 const cfg = () => (window.CONFIG_USDT || {});
 
@@ -38,4 +39,13 @@ export function esInstaladorWindows() {
   return esEscritorio && window.electronUSDT && window.electronUSDT.actualizador && window.electronUSDT.actualizador.soportado;
 }
 
-export function descargar(info) { if (info && info.url) abrirEnlaceExterno(info.url); }
+/** Windows portable: abre la descarga. Android: descarga el APK y lanza el instalador (misma firma → conserva datos). */
+export async function descargar(info) {
+  if (!info || !info.url) return;
+  if (plataforma === 'android' && /\.apk$/i.test(info.url)) {
+    toast('Descargando la versión ' + info.nueva + '… al terminar se abre el instalador de Android', 'ok', 6000);
+    try { await descargarEInstalarApk(info.url, 'USDT-CPA-' + info.nueva + '.apk'); return; }
+    catch (e) { toast('No se pudo instalar desde la app (' + (e && e.message ? e.message : e) + '); se abre la descarga en el navegador', 'error', 6000); }
+  }
+  abrirEnlaceExterno(info.url);
+}

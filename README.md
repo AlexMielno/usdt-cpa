@@ -161,16 +161,28 @@ Alternativa sin instalar nada: subir el repositorio a GitHub; el workflow `compi
 
 ---
 
+## 4.1 Comisiones y moneda de los reportes (desde v1.4)
+
+- **Comisión real de Binance P2P (VES):** 0,24 % del total en USDT, descontado en USDT, tanto al comprar como al vender
+  (verificado en órdenes reales: 13,47 → 0,03; 50,18 → 0,12; 58,49 → 0,14; 59,71 → 0,14). No hay comisión en bolívares.
+  Son los valores de fábrica (`COMISIONES` en config.js); en Ajustes se pueden cambiar, por ejemplo para sumar pago móvil.
+- **Reportes en dólares:** utilidades, diferenciales y comisiones se muestran en $ convirtiendo los bolívares a la **tasa BCV del
+  día de cada operación** (columna TASA BCV de la fila). Así la devaluación no distorsiona las comparaciones entre meses.
+  El valor en bolívares sigue disponible debajo o en columnas secundarias.
+
 ## 5. Flujo de versiones (actualizaciones automáticas)
 
 Las versiones se publican en **GitHub Releases** del repositorio configurado en `app/www/config.js`
 (`ACTUALIZACIONES: { propietario: 'AlexMielno', repositorio: 'usdt-cpa' }`) y en `app/package.json` (`build.publish`).
 
 - **Windows instalado (instalador NSIS):** `electron-updater` comprueba al arrancar, descarga la nueva
-  versión en segundo plano y la instala al cerrar/reiniciar la app (muestra aviso en Inicio y Ajustes).
+  versión en segundo plano y la instala al cerrar/reiniciar la app (muestra aviso en Inicio y Ajustes). Desde v1.4 el
+  instalador es **por usuario** (`%LOCALAPPDATA%\Programs`), sin permisos de administrador, y la instalación es silenciosa;
+  si quedó una instalación antigua en `C:\Program Files\USDT CPA` hay que desinstalarla una vez a mano.
 - **Windows portable y Android:** la app consulta la última release; si es más nueva muestra el aviso
   "Nueva versión disponible" con botón **Descargar** (abre el .exe/.apk). En Android se instala encima de la
-  actual (misma firma → conserva PIN y datos). Además hay un botón *Buscar actualizaciones* en Ajustes.
+  actual (misma firma → conserva PIN y datos). Desde v1.4 la app descarga el APK y abre el instalador del sistema
+  (permiso REQUEST_INSTALL_PACKAGES + plugin file-opener). Además hay un botón *Buscar actualizaciones* en Ajustes.
 
 Cómo publicar una versión (una vez creado el repositorio en GitHub, público para que las apps puedan
 descargar las releases sin token):

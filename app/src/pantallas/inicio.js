@@ -3,7 +3,7 @@ import { el, montar, toast, icono, cargando, ayuda } from '../ui.js';
 import { cabecera, selectorCartera, conNavegacion } from './cascaron.js';
 import { estado, navegar, en, registrarError } from '../estado.js';
 import * as datos from '../datos.js';
-import { num, ves, pct, signo, haceCuanto, fechaCorta } from '../formato.js';
+import { num, ves, usd, signoUsd, enUsd, pct, signo, haceCuanto, fechaCorta } from '../formato.js';
 import { resumirCartera } from '../calculos.js';
 import { filaOperacion } from './historial.js';
 import { descargar, esInstaladorWindows } from '../actualizador.js';
@@ -49,24 +49,26 @@ export function pantallaInicio({ manejarError }) {
     const t = estado.tasas || {};
     const valorActualVes = t.p2p && t.p2p.venta ? r.saldoUsdt * (t.p2p.venta.promedio5 || t.p2p.venta.mejor) : 0;
     const noRealizado = r.saldoUsdt > 0 && r.costoPromedio > 0 && valorActualVes ? valorActualVes - r.saldoUsdt * r.costoPromedio : 0;
+    const bcvHoy = t.bcv && t.bcv.valor ? t.bcv.valor : 0;
     zonaResumen.replaceChildren(el('div.tarjeta', {},
       el('h2', {}, el('span', {}, 'Cartera ' + estado.cartera, ayuda('resumen')), el('span.accion.mini', {}, r.operaciones + ' operaciones')),
       el('div.grid-2', {},
-        el('div.dato', {}, el('div.etq', {}, 'Saldo USDT'), el('div.val', {}, num(r.saldoUsdt, 2)), el('div.nota', {}, valorActualVes ? '≈ ' + ves(valorActualVes) + ' al P2P' : '')),
+        el('div.dato', {}, el('div.etq', {}, 'Saldo USDT'), el('div.val', {}, num(r.saldoUsdt, 2)), el('div.nota', {}, valorActualVes ? '≈ ' + ves(valorActualVes) + ' al P2P' + (bcvHoy ? ' · ' + usd(valorActualVes / bcvHoy) + ' BCV' : '') : '')),
         el('div.dato', {}, el('div.etq', {}, 'Costo promedio'), el('div.val.peq', {}, r.costoPromedio ? num(r.costoPromedio, 4) : '—'), el('div.nota', {}, 'VES por USDT')),
       ),
       el('table.tabla', { estilo: { marginTop: '10px' } },
-        fila('Diferencial vs BCV (acumulado)', r.difBcvVes, ' Bs'),
-        fila('Diferencial vs P2P (acumulado)', r.difP2pVes, ' Bs'),
-        fila('Resultado realizado en ventas', r.resultadoRealizadoVes, ' Bs'),
-        fila('Resultado no realizado (saldo)', noRealizado, ' Bs'),
-        el('tr', {}, el('td.etq', {}, 'Comisiones pagadas'), el('td', {}, num(r.comisionesUsdt, 2) + ' USDT · ' + ves(r.comisionesVes))),
+        fila('Diferencial vs BCV (acumulado)', r.difBcvUsd, r.difBcvVes),
+        fila('Diferencial vs P2P (acumulado)', r.difP2pUsd, r.difP2pVes),
+        fila('Resultado realizado en ventas', r.resultadoRealizadoUsd, r.resultadoRealizadoVes),
+        fila('Resultado no realizado (saldo)', enUsd(noRealizado, bcvHoy), noRealizado),
+        el('tr', {}, el('td.etq', {}, 'Comisiones pagadas'), el('td', {}, usd(r.comisionesUsd), el('div.mini', {}, num(r.comisionesUsdt, 2) + ' USDT · ' + ves(r.comisionesVes)))),
         el('tr', {}, el('td.etq', {}, 'Comprado / vendido'), el('td', {}, num(r.comprasUsdt, 2) + ' / ' + num(r.ventasUsdt, 2) + ' USDT')),
       ),
     ));
   });
 
-  const fila = (etq, v, suf) => el('tr', {}, el('td.etq', {}, etq), el('td', { clase: v > 0 ? 'positivo' : v < 0 ? 'negativo' : 'neutro' }, signo(v, 2) + suf));
+  // Valor principal en $ (al BCV del día de cada operación) y debajo el equivalente en bolívares
+  const fila = (etq, vUsd, vVes) => el('tr', {}, el('td.etq', {}, etq), el('td', { clase: vUsd > 0 ? 'positivo' : vUsd < 0 ? 'negativo' : 'neutro' }, signoUsd(vUsd), el('div.mini', {}, signo(vVes, 2) + ' Bs')));
 
   const pintarUltimas = () => seguro(zonaUltimas, 'Últimas operaciones', () => {
     const ops = (estado.operaciones || []).filter(o => o.cartera === estado.cartera).slice(0, 5);

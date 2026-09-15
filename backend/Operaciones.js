@@ -221,20 +221,24 @@ function resumenCartera_() {
   CONFIG.CARTERAS.forEach(c => {
     res[c] = { cartera: c, saldoUsdt: 0, costoPromedio: 0, costoTotalVes: 0, comprasUsdt: 0, comprasVes: 0, ventasUsdt: 0, ventasVes: 0,
                comisionesUsdt: 0, comisionesVes: 0, difBcvVes: 0, difP2pVes: 0, resultadoRealizadoVes: 0, equivUsdBcvCompras: 0, equivUsdBcvVentas: 0,
+               difBcvUsd: 0, difP2pUsd: 0, resultadoRealizadoUsd: 0, comisionesUsd: 0,
                operaciones: 0, ultimaFecha: '' };
   });
   ops.forEach(o => {
     const r = res[o.cartera]; if (!r) return;
     r.operaciones++; r.ultimaFecha = o.fecha;
+    const bcv = o.tasaBcv > 0 ? o.tasaBcv : 0;
     r.comisionesUsdt += o.comisionUsdt; r.comisionesVes += o.comisionVes;
     r.difBcvVes += o.difBcvVes; r.difP2pVes += o.difP2pVes;
+    r.comisionesUsd += o.comisionUsdt + (bcv ? o.comisionVes / bcv : 0);
+    if (bcv) { r.difBcvUsd += o.difBcvVes / bcv; r.difP2pUsd += o.difP2pVes / bcv; }
     if (o.tipo === 'COMPRA') {
       r.comprasUsdt += o.usdtNeto; r.comprasVes += o.vesNeto; r.equivUsdBcvCompras += o.equivUsdBcv;
       r.costoTotalVes += o.vesNeto; r.saldoUsdt += o.usdtNeto;
       r.costoPromedio = r.saldoUsdt > 0 ? r.costoTotalVes / r.saldoUsdt : 0;
     } else {
       r.ventasUsdt += o.usdtNeto; r.ventasVes += o.vesNeto; r.equivUsdBcvVentas += o.equivUsdBcv;
-      if (r.costoPromedio > 0) r.resultadoRealizadoVes += (o.tasaEfectiva - r.costoPromedio) * o.usdtNeto;
+      if (r.costoPromedio > 0) { const res = (o.tasaEfectiva - r.costoPromedio) * o.usdtNeto; r.resultadoRealizadoVes += res; if (bcv) r.resultadoRealizadoUsd += res / bcv; }
       r.saldoUsdt -= o.usdtNeto;
       r.costoTotalVes = Math.max(r.saldoUsdt, 0) * r.costoPromedio;
       if (r.saldoUsdt <= 0) { r.costoTotalVes = 0; }
@@ -243,7 +247,7 @@ function resumenCartera_() {
   Object.keys(res).forEach(c => {
     const r = res[c];
     ['saldoUsdt', 'costoPromedio', 'costoTotalVes', 'comprasUsdt', 'comprasVes', 'ventasUsdt', 'ventasVes', 'comisionesUsdt', 'comisionesVes',
-     'difBcvVes', 'difP2pVes', 'resultadoRealizadoVes', 'equivUsdBcvCompras', 'equivUsdBcvVentas'].forEach(k => { r[k] = redondear_(r[k], 4); });
+     'difBcvVes', 'difP2pVes', 'resultadoRealizadoVes', 'equivUsdBcvCompras', 'equivUsdBcvVentas', 'difBcvUsd', 'difP2pUsd', 'resultadoRealizadoUsd', 'comisionesUsd'].forEach(k => { r[k] = redondear_(r[k], 4); });
   });
   return { carteras: res, totalOperaciones: ops.length, generado: ahora_().toISOString() };
 }

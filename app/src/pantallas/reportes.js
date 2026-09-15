@@ -82,7 +82,7 @@ export function pantallaReportes({ manejarError }) {
 
 function colorValor(v) {
   const t = String(v || '');
-  if (/^\+[\d.,]/.test(t)) return 'positivo';
-  if (/^-[\d.,]/.test(t)) return 'negativo';
+  if (/^\+/.test(t)) return 'positivo';
+  if (/^-(\$|[\d.,])/.test(t)) return 'negativo';
   return '';
 }

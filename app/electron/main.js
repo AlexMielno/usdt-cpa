@@ -22,6 +22,7 @@ const unicaInstancia = app.requestSingleInstanceLock();
 if (!unicaInstancia) app.quit();
 
 let ventana = null;
+let servidorHttp = null;
 
 function servidorLocal() {
   return new Promise((resolve, reject) => {
@@ -36,7 +37,7 @@ function servidorLocal() {
       });
     });
     let intentos = 0;
-    const escuchar = () => srv.listen(PUERTO, '127.0.0.1', () => resolve(srv));
+    const escuchar = () => srv.listen(PUERTO, '127.0.0.1', () => { servidorHttp = srv; resolve(srv); });
     srv.on('error', (e) => { if (e.code === 'EADDRINUSE' && intentos++ < 8) setTimeout(escuchar, 500); else reject(e); });
     escuchar();
   });
@@ -104,7 +105,8 @@ function configurarActualizador() {
   autoUpdater.on('update-downloaded', (i) => avisar('descargada', { version: i.version }));
   autoUpdater.on('error', (e) => avisar('error', { mensaje: String(e && e.message || e) }));
   ipcMain.handle('usdt:actualizador:comprobar', async () => { try { const r = await autoUpdater.checkForUpdates(); return { ok: true, version: r && r.updateInfo && r.updateInfo.version }; } catch (e) { return { ok: false, mensaje: String(e.message || e) }; } });
-  ipcMain.handle('usdt:actualizador:instalar', async () => { setImmediate(() => autoUpdater.quitAndInstall(false, true)); return true; });
+  // Instalación silenciosa (isSilent=true) y relanzar al terminar: el instalador por usuario no pide permisos de administrador
+  ipcMain.handle('usdt:actualizador:instalar', async () => { setImmediate(() => { cerrarTodo(); autoUpdater.quitAndInstall(true, true); }); return true; });
   setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 8000);
 }
 ipcMain.handle('usdt:actualizador:soportado', async () => app.isPackaged && !ES_PORTABLE);
@@ -119,3 +121,10 @@ app.whenReady().then(async () => {
 });
 app.on('second-instance', () => { const w = BrowserWindow.getAllWindows()[0]; if (w) { if (w.isMinimized()) w.restore(); w.focus(); } });
 app.on('window-all-closed', () => app.quit());
+
+/** Cierra el servidor local y las ventanas para que el instalador no encuentre la app "abierta". */
+function cerrarTodo() {
+  try { BrowserWindow.getAllWindows().forEach(w => { try { w.destroy(); } catch (e) { /* nada */ } }); } catch (e) { /* nada */ }
+  if (servidorHttp) { try { servidorHttp.close(); } catch (e) { /* nada */ } servidorHttp = null; }
+}
+app.on('before-quit', cerrarTodo);

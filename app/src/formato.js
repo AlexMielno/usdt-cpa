@@ -8,8 +8,13 @@ export function num(n, dec = 2) {
 }
 
 export function ves(n, dec = 2) { return 'Bs ' + num(n, dec); }
-export function usdt(n, dec = 2) { return num(n, dec) + ' USDT'; }
+/** Dólares (al BCV): "$ 1.234,56". */
 export function usd(n, dec = 2) { return '$ ' + num(n, dec); }
+/** Dólares con signo: "+$ 12,30" / "-$ 4,07". */
+export function signoUsd(n, dec = 2) { const v = Number(n) || 0; return (v > 0 ? '+' : v < 0 ? '-' : '') + '$ ' + num(Math.abs(v), dec); }
+/** Convierte bolívares a dólares con la tasa BCV indicada (0 si no hay tasa). */
+export function enUsd(ves, tasaBcv) { const t = Number(tasaBcv) || 0; return t > 0 ? (Number(ves) || 0) / t : 0; }
+export function usdt(n, dec = 2) { return num(n, dec) + ' USDT'; }
 export function pct(n, dec = 2) { return num((Number(n) || 0) * 100, dec) + ' %'; }
 export function signo(n, dec = 2) { const v = Number(n) || 0; return (v > 0 ? '+' : '') + num(v, dec); }
 

@@ -3,7 +3,7 @@ import { el, montar, toast, icono, modal, confirmar, cargando, ayuda } from '../
 import { cabecera, selectorCartera, conNavegacion } from './cascaron.js';
 import { estado, en } from '../estado.js';
 import * as datos from '../datos.js';
-import { num, ves, signo, fechaCorta, fechaLarga, mesDe, nombreMes, pct } from '../formato.js';
+import { num, ves, signo, fechaCorta, fechaLarga, mesDe, nombreMes, pct, signoUsd, enUsd } from '../formato.js';
 
 export function filaOperacion(o) {
   const anulada = o.estado === 'ANULADA';
@@ -15,7 +15,7 @@ export function filaOperacion(o) {
       el('div.detalle', {}, fechaCorta(o.fecha) + ' ' + (o.hora || '') + (o.observaciones ? ' · ' + o.observaciones : (o.contraparte ? ' · ' + o.contraparte : '')))),
     el('div.derecha', {},
       el('div.monto', {}, ves(o.vesNeto)),
-      el('div.dif', { clase: dif > 0 ? 'positivo' : dif < 0 ? 'negativo' : 'neutro' }, 'P2P ' + signo(dif, 0) + ' Bs')),
+      el('div.dif', { clase: dif > 0 ? 'positivo' : dif < 0 ? 'negativo' : 'neutro' }, 'P2P ' + signoUsd(enUsd(dif, o.tasaBcv)))),
   );
 }
 
@@ -36,8 +36,8 @@ export function verDetalle(o) {
         fila('Tasa efectiva', num(o.tasaEfectiva, 4)),
         fila('Tasa BCV del día', num(o.tasaBcv, 4)),
         fila('Tasa P2P de referencia', num(o.tasaP2p, 4)),
-        fila('Diferencial vs BCV', signo(o.difBcvVes, 2) + ' Bs (' + signo(o.difBcvPct * 100, 2) + ' %)', cl(o.difBcvVes)),
-        fila('Diferencial vs P2P', signo(o.difP2pVes, 2) + ' Bs', cl(o.difP2pVes)),
+        fila('Diferencial vs BCV', signoUsd(enUsd(o.difBcvVes, o.tasaBcv)) + ' · ' + signo(o.difBcvVes, 2) + ' Bs (' + signo(o.difBcvPct * 100, 2) + ' %)', cl(o.difBcvVes)),
+        fila('Diferencial vs P2P', signoUsd(enUsd(o.difP2pVes, o.tasaBcv)) + ' · ' + signo(o.difP2pVes, 2) + ' Bs', cl(o.difP2pVes)),
         fila('Equivalente USD al BCV', '$ ' + num(o.equivUsdBcv, 2)),
         o.contraparte ? fila('Contraparte', o.contraparte) : null,
         (o.metodoPago || o.referencia) ? fila('Método / referencia', (o.metodoPago || '—') + ' · ' + (o.referencia || '—')) : null,

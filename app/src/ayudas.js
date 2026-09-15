@@ -68,7 +68,7 @@ export const AYUDAS = {
   comisiones: {
     titulo: 'Comisiones',
     texto: 'Se calculan solas con las reglas de Ajustes (porcentaje del monto en USDT y del total en Bs). Si la comisión real fue distinta, escribe el valor; "recalcular" vuelve al automático. En una compra encarecen el costo; en una venta reducen lo recibido. Entran en la tasa efectiva y en el resultado.',
-    ejemplos: ['Retiro con 1 USDT de comisión → Comisión USDT = 1.', 'Transferencia con 150 Bs de comisión bancaria → Comisión Bs = 150.'],
+    ejemplos: ['Binance P2P descuenta 0,24 % en USDT: compras 50,18 USDT y recibes 50,06 (comisión 0,12).', 'Transferencia con 150 Bs de comisión bancaria → Comisión Bs = 150.'],
   },
   operacion: {
     titulo: 'Datos de la operación',
@@ -88,7 +88,7 @@ export const AYUDAS = {
   comisionesConfig: {
     titulo: 'Comisiones por defecto',
     texto: 'Reglas con las que la app calcula las comisiones al registrar: un porcentaje del monto en USDT (comisión de Binance o del comercio), un porcentaje del total en bolívares (comisión bancaria o de pago móvil) y montos fijos. Guárdalas y se aplicarán a las próximas operaciones.',
-    ejemplos: ['Compra: 0 % USDT + 0,30 % Bs (pago móvil interbancario).', 'Venta: 0,20 % USDT (comisión del comercio) + 0 Bs.'],
+    ejemplos: ['Valor real de Binance P2P en bolívares: 0,24 % del total en USDT, en compras y en ventas (ej. compra de 13,47 USDT → 0,03 USDT; venta de 59,71 USDT → 0,14 USDT).', 'Si tu banco cobra pago móvil interbancario, agrega ese % en "% del total en Bs".'],
   },
   previa: {
     titulo: 'Vista previa',
@@ -150,7 +150,7 @@ export const AYUDAS = {
   },
   acercaDe: {
     titulo: 'Acerca de y actualizaciones',
-    texto: 'Versión instalada, plataforma y estado del anti-bot. "Buscar actualizaciones" consulta las versiones publicadas: en Windows instalado se descargan e instalan solas; en portable y Android se descarga el archivo y se instala encima (conserva tus datos).',
+    texto: 'Versión instalada, plataforma y estado del anti-bot. "Buscar actualizaciones" consulta las versiones publicadas: en Windows instalado se descargan e instalan solas (sin pedir permisos de administrador); en Android la app descarga el APK y abre el instalador, que pregunta "¿Actualizar?"; en el portable se descarga el .exe nuevo.',
     ejemplos: [],
   },
   // ---------- bienvenida ----------

@@ -9,6 +9,7 @@ import { BiometricAuth, BiometryType } from '@aparajita/capacitor-biometric-auth
 import { SecureStorage } from '@aparajita/capacitor-secure-storage';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { FileOpener } from '@capacitor-community/file-opener';
 
 const esCapacitor = Capacitor.isNativePlatform();
 const electron = typeof window !== 'undefined' ? window.electronUSDT : undefined;
@@ -116,6 +117,14 @@ export async function guardarArchivo(nombre, base64, mime) {
   const a = document.createElement('a'); a.href = url; a.download = nombre; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
   return { ok: true, mensaje: 'Descargando ' + nombre };
+}
+
+/** Android: descarga el APK de la nueva versión a la caché y abre el instalador del sistema (pide "Actualizar"). */
+export async function descargarEInstalarApk(url, nombre) {
+  if (!esCapacitor) throw new Error('Solo disponible en Android');
+  const r = await Filesystem.downloadFile({ url, path: nombre, directory: Directory.Cache });
+  await FileOpener.open({ filePath: r.path, contentType: 'application/vnd.android.package-archive', openWithDefault: true });
+  return r.path;
 }
 
 export function nombreDispositivoSugerido() {

@@ -22,8 +22,10 @@ window.CONFIG_USDT = {
   // Comisiones que se calculan solas al registrar (se pueden ajustar en la app: Ajustes > Comisiones por defecto)
   //   usdtPct = % del monto USDT · usdtFijo = USDT fijos · vesPct = % del total en Bs · vesFijo = Bs fijos
   COMISIONES: {
-    compra: { usdtPct: 0, usdtFijo: 0, vesPct: 0.30, vesFijo: 0 },
-    venta:  { usdtPct: 0.20, usdtFijo: 0, vesPct: 0, vesFijo: 0 },
+    // Binance P2P (VES) cobra 0,24 % del total en USDT tanto al comprar como al vender (verificado en órdenes reales);
+    // no hay comisión en bolívares. Si el banco cobrara pago móvil, se puede agregar en Ajustes.
+    compra: { usdtPct: 0.24, usdtFijo: 0, vesPct: 0, vesFijo: 0 },
+    venta:  { usdtPct: 0.24, usdtFijo: 0, vesPct: 0, vesFijo: 0 },
   },
 
   // Actualizaciones: repositorio de GitHub donde se publican las versiones (Releases).
@@ -31,5 +33,5 @@ window.CONFIG_USDT = {
   ACTUALIZACIONES: { propietario: 'AlexMielno', repositorio: 'usdt-cpa' },
 
   // Versión de esta compilación (la actualiza herramientas/nueva_version.js)
-  VERSION: '1.3.0',
+  VERSION: '1.4.0',
 };
