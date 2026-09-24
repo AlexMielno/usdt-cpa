@@ -65,5 +65,6 @@ export const listar = (opciones) => llamar('listar', opciones || {});
 export const registrar = (op) => llamar('registrar', op);
 export const anular = (id, motivo) => llamar('anular', { id, motivo });
 export const borrar = (id) => llamar('borrar', { id });
+export const actualizar = (id, cambios) => llamar('actualizar', Object.assign({ id }, cambios));
 export const editar = (id, cambios) => llamar('editar', Object.assign({ id }, cambios));
 export const resumen = () => llamar('resumen');

@@ -15,6 +15,7 @@
 function calcularOperacion_(d) {
   const monto = d.montoUsdt, tasa = d.tasa;
   const totalVes = monto * tasa;
+  // PAGO se calcula como una VENTA: se entregan USDT y se cancela un valor en Bs (la factura) a la tasa pactada.
   const esCompra = d.tipo === 'COMPRA';
   // Comisiones: en una compra la comisión USDT reduce lo recibido y la comisión VES aumenta lo pagado.
   //             en una venta la comisión USDT aumenta lo entregado y la comisión VES reduce lo recibido.
@@ -147,6 +148,46 @@ function anularOperacion_(datos, sesion) {
   return { id: id, estado: 'ANULADA' };
 }
 
+/**
+ * Acción "actualizar" (modo tabulador): reemplaza los campos editables de una operación, revalida, recalcula
+ * totales y diferenciales y reescribe la fila completa. Conserva id, dispositivo y fecha de registro.
+ */
+function actualizarOperacion_(datos, sesion) {
+  const d = datos || {};
+  const id = texto_(d.id, 20);
+  if (!id) throw new ErrorApi('dato_invalido', 'Falta el ID.');
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  let op;
+  try {
+    const hoja = hoja_(CONFIG.HOJA_BD);
+    const ids = hoja.getRange(2, 1, Math.max(hoja.getLastRow() - 1, 1), 1).getValues().map(r => String(r[0]));
+    const idx = ids.indexOf(id);
+    if (idx === -1) throw new ErrorApi('no_existe', 'No existe la operación ' + id, 404);
+    const fila = idx + 2;
+    const actual = operacionDesdeFila_(hoja.getRange(fila, 1, 1, COLUMNAS.length).getValues()[0]);
+    const editables = ['fecha', 'hora', 'cartera', 'tipo', 'montoUsdt', 'tasa', 'comisionUsdt', 'comisionVes', 'tasaBcv', 'tasaP2p', 'contraparte', 'metodoPago', 'referencia', 'observaciones'];
+    const fusion = {};
+    editables.forEach(c => { fusion[c] = d[c] !== undefined ? d[c] : actual[c]; });
+    op = validarOperacion_(fusion, sesion);
+    op.id = id;
+    op.dispositivo = actual.dispositivo || texto_(sesion.d, 60);
+    op.registrado = actual.registrado ? new Date(actual.registrado) : ahora_();
+    const estadoNuevo = texto_(d.estado, 10).toUpperCase();
+    op.estado = (estadoNuevo === 'ACTIVA' || estadoNuevo === 'ANULADA') ? estadoNuevo : (actual.estado || 'ACTIVA');
+    if (op.estado === 'ANULADA') {
+      op.motivoAnulacion = d.motivoAnulacion !== undefined ? texto_(d.motivoAnulacion, 200) + ' [' + texto_(sesion.d, 60) + ' ' + Utilities.formatDate(ahora_(), CONFIG_TZ_(), 'dd/MM/yyyy HH:mm') + ']' : (actual.motivoAnulacion || 'Sin motivo');
+    } else op.motivoAnulacion = '';
+    hoja.getRange(fila, 1, 1, COLUMNAS.length).setValues([filaDesdeOperacion_(op)]);
+    SpreadsheetApp.flush();
+    console.log('ACTUALIZADA ' + id + ' por ' + texto_(sesion.d, 60) + ': ' + JSON.stringify(d));
+  } finally {
+    lock.releaseLock();
+  }
+  op.registrado = op.registrado.toISOString();
+  return op;
+}
+
 /** Acción "borrar": elimina la fila definitivamente (a diferencia de anular). La app pide escribir BORRAR. */
 function borrarOperacion_(datos, sesion) {
   const id = texto_((datos || {}).id, 20);
@@ -222,6 +263,7 @@ function resumenCartera_() {
     res[c] = { cartera: c, saldoUsdt: 0, costoPromedio: 0, costoTotalVes: 0, comprasUsdt: 0, comprasVes: 0, ventasUsdt: 0, ventasVes: 0,
                comisionesUsdt: 0, comisionesVes: 0, difBcvVes: 0, difP2pVes: 0, resultadoRealizadoVes: 0, equivUsdBcvCompras: 0, equivUsdBcvVentas: 0,
                difBcvUsd: 0, difP2pUsd: 0, resultadoRealizadoUsd: 0, comisionesUsd: 0,
+               pagosUsdt: 0, pagosVes: 0, equivUsdBcvPagos: 0,
                operaciones: 0, ultimaFecha: '' };
   });
   ops.forEach(o => {
@@ -237,7 +279,9 @@ function resumenCartera_() {
       r.costoTotalVes += o.vesNeto; r.saldoUsdt += o.usdtNeto;
       r.costoPromedio = r.saldoUsdt > 0 ? r.costoTotalVes / r.saldoUsdt : 0;
     } else {
-      r.ventasUsdt += o.usdtNeto; r.ventasVes += o.vesNeto; r.equivUsdBcvVentas += o.equivUsdBcv;
+      // VENTA y PAGO sacan USDT de la cartera al costo promedio
+      if (o.tipo === 'PAGO') { r.pagosUsdt += o.usdtNeto; r.pagosVes += o.vesNeto; r.equivUsdBcvPagos += o.equivUsdBcv; }
+      else { r.ventasUsdt += o.usdtNeto; r.ventasVes += o.vesNeto; r.equivUsdBcvVentas += o.equivUsdBcv; }
       if (r.costoPromedio > 0) { const res = (o.tasaEfectiva - r.costoPromedio) * o.usdtNeto; r.resultadoRealizadoVes += res; if (bcv) r.resultadoRealizadoUsd += res / bcv; }
       r.saldoUsdt -= o.usdtNeto;
       r.costoTotalVes = Math.max(r.saldoUsdt, 0) * r.costoPromedio;
@@ -247,7 +291,7 @@ function resumenCartera_() {
   Object.keys(res).forEach(c => {
     const r = res[c];
     ['saldoUsdt', 'costoPromedio', 'costoTotalVes', 'comprasUsdt', 'comprasVes', 'ventasUsdt', 'ventasVes', 'comisionesUsdt', 'comisionesVes',
-     'difBcvVes', 'difP2pVes', 'resultadoRealizadoVes', 'equivUsdBcvCompras', 'equivUsdBcvVentas', 'difBcvUsd', 'difP2pUsd', 'resultadoRealizadoUsd', 'comisionesUsd'].forEach(k => { r[k] = redondear_(r[k], 4); });
+     'difBcvVes', 'difP2pVes', 'resultadoRealizadoVes', 'equivUsdBcvCompras', 'equivUsdBcvVentas', 'difBcvUsd', 'difP2pUsd', 'resultadoRealizadoUsd', 'comisionesUsd', 'pagosUsdt', 'pagosVes', 'equivUsdBcvPagos'].forEach(k => { r[k] = redondear_(r[k], 4); });
   });
   return { carteras: res, totalOperaciones: ops.length, generado: ahora_().toISOString() };
 }

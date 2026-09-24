@@ -19,6 +19,7 @@ import { pantallaRegistro } from './pantallas/registro.js';
 import { pantallaHistorial } from './pantallas/historial.js';
 import { pantallaAjustes } from './pantallas/ajustes.js';
 import { pantallaReportes } from './pantallas/reportes.js';
+import { pantallaTabla } from './pantallas/tabla.js';
 import { comprobarActualizacion } from './actualizador.js';
 import { estado, emitir, registrarError } from './estado.js';
 
@@ -59,6 +60,7 @@ function navegar(nombre) {
     case 'historial': return pantallaHistorial(ctx);
     case 'ajustes': return pantallaAjustes(ctx);
     case 'reportes': return pantallaReportes(ctx);
+    case 'tabla': return pantallaTabla(ctx);
     default: pantallaActual = 'inicio'; return pantallaInicio(ctx);
   }
 }

@@ -1,4 +1,4 @@
-/** Registrar una compra o venta con vista previa en vivo de totales y diferenciales. */
+/** Registrar una compra, venta o pago (Binance Pay) con vista previa en vivo de totales y diferenciales. */
 import { el, montar, toast, icono, modal, ayuda } from '../ui.js';
 import { cabecera, conNavegacion } from './cascaron.js';
 import { estado, navegar } from '../estado.js';
@@ -12,7 +12,7 @@ export function pantallaRegistro({ manejarError }) {
   const carteras = cfg.CARTERAS || ['CPA BEJUMA'];
   const f = {
     tipo: 'COMPRA', cartera: carteras.includes(estado.cartera) ? estado.cartera : carteras[0], fecha: hoyISO(), hora: horaActual(),
-    montoUsdt: '', tasa: '', tasaP2p: '', tasaBcv: '', comisionUsdt: '', comisionVes: '', observaciones: '',
+    montoUsdt: '', tasa: '', tasaP2p: '', tasaBcv: '', comisionUsdt: '', comisionVes: '', observaciones: '', contraparte: '', referencia: '',
   };
   let sugerencia = { valor: 0, motivo: '' };
   let tasaTocada = false, p2pTocada = false, comUsdtTocada = false, comVesTocada = false;
@@ -33,6 +33,14 @@ export function pantallaRegistro({ manejarError }) {
   const iFecha = inp('fecha', { tipo: 'date' });
   const iHora = inp('hora', { tipo: 'time' });
   const iObs = el('textarea', { name: 'observaciones', placeholder: 'Ej. compra para pagar proveedor de harina', maxlength: 1000 });
+  // Solo para PAGO: beneficiario, referencia de Binance Pay y monto de la factura en Bs (calcula la tasa pactada)
+  const iBenef = inp('contraparte', { placeholder: 'Nombre o correo del beneficiario' });
+  const iRef = inp('referencia', { placeholder: 'N.º de orden de Binance Pay', max: 60 });
+  const iFactura = el('input', { type: 'text', name: 'facturaVes', inputmode: 'decimal', placeholder: '0,00', autocomplete: 'off' });
+  iFactura.addEventListener('input', () => { const bs = aNumero(iFactura.value), monto = aNumero(f.montoUsdt); if (bs > 0 && monto > 0) { f.tasa = String(redondear(bs / monto, 4)); iTasa.value = num(bs / monto, 4); tasaTocada = true; comisionesAuto(); } });
+  const claveReglas = () => f.tipo === 'COMPRA' ? 'compra' : f.tipo === 'PAGO' ? 'pago' : 'venta';
+  const etqTasa = el('span', {}, 'Tasa de la operación (Bs por USDT)');
+  let tarjetaPago = null;   // se crea más abajo (la tarjeta solo se muestra para PAGO)
   iObs.addEventListener('input', () => { f.observaciones = iObs.value; });
 
   const chipsTasa = el('div.chips', { estilo: { marginTop: '6px' } });
@@ -42,7 +50,11 @@ export function pantallaRegistro({ manejarError }) {
 
   // ---- selectores de tipo y cartera ----
   const selTipo = el('div.selector', {});
-  const pintarTipo = () => selTipo.replaceChildren(...['COMPRA', 'VENTA'].map(t => el('button', { type: 'button', clase: t.toLowerCase() + (f.tipo === t ? ' activo' : ''), onClick: () => { f.tipo = t; pintarTipo(); sugerir(true); comisionesAuto(true); } }, t === 'COMPRA' ? 'COMPRA de USDT' : 'VENTA de USDT')));
+  const pintarTipo = () => {
+    selTipo.replaceChildren(...['COMPRA', 'VENTA', 'PAGO'].map(t => el('button', { type: 'button', clase: t.toLowerCase() + (f.tipo === t ? ' activo' : ''), onClick: () => { f.tipo = t; pintarTipo(); sugerir(true); comisionesAuto(true); } }, t === 'COMPRA' ? 'COMPRA de USDT' : t === 'VENTA' ? 'VENTA de USDT' : 'PAGO con USDT')));
+    if (tarjetaPago) tarjetaPago.style.display = f.tipo === 'PAGO' ? '' : 'none';
+    etqTasa.textContent = f.tipo === 'PAGO' ? 'Tasa pactada con el beneficiario (Bs por USDT)' : 'Tasa de la operación (Bs por USDT)';
+  };
   pintarTipo();
   const selCartera = el('div.selector', {});
   const pintarCartera = () => selCartera.replaceChildren(...carteras.map(c => el('button', { type: 'button', clase: f.cartera === c ? 'activo' : '', onClick: () => { f.cartera = c; pintarCartera(); } }, c)));
@@ -51,7 +63,7 @@ export function pantallaRegistro({ manejarError }) {
   // ---- comisiones automáticas (según reglas de Ajustes) ----
   const comisionesAuto = (forzar) => {
     if (!reglas) return;
-    const r = reglas[f.tipo === 'COMPRA' ? 'compra' : 'venta'] || {};
+    const r = reglas[claveReglas()] || {};
     const monto = aNumero(f.montoUsdt) || 0, tasa = aNumero(f.tasa) || 0;
     if (forzar) { comUsdtTocada = false; comVesTocada = false; }
     if (!comUsdtTocada) {
@@ -67,7 +79,7 @@ export function pantallaRegistro({ manejarError }) {
   };
   const pintarNotaComisiones = () => {
     if (!reglas) { notaCom.textContent = ''; return; }
-    const r = reglas[f.tipo === 'COMPRA' ? 'compra' : 'venta'] || {};
+    const r = reglas[claveReglas()] || {};
     const partes = [];
     partes.push('USDT: ' + (comUsdtTocada ? 'manual' : 'auto ' + num(r.usdtPct || 0, 2) + ' %' + (r.usdtFijo ? ' + ' + num(r.usdtFijo, 2) : '')));
     partes.push('Bs: ' + (comVesTocada ? 'manual' : 'auto ' + num(r.vesPct || 0, 2) + ' %' + (r.vesFijo ? ' + ' + num(r.vesFijo, 2) + ' Bs' : '')));
@@ -105,13 +117,13 @@ export function pantallaRegistro({ manejarError }) {
     const linea = (etq, val, clase) => el('div.linea', {}, el('span', {}, etq), el('span', { clase: clase || '' }, val));
     const cl = v => v > 0 ? 'positivo' : v < 0 ? 'negativo' : 'neutro';
     previa.replaceChildren(
-      linea(f.tipo === 'COMPRA' ? 'Pagas en bolívares' : 'Recibes en bolívares', ves(c.totalVes)),
+      linea(f.tipo === 'COMPRA' ? 'Pagas en bolívares' : f.tipo === 'PAGO' ? 'Valor que cancelas (factura en Bs)' : 'Recibes en bolívares', ves(c.totalVes)),
       linea(f.tipo === 'COMPRA' ? 'USDT que recibes (neto)' : 'USDT que entregas (con comisión)', num(c.usdtNeto, 4) + ' USDT'),
       linea('Tasa efectiva', num(c.tasaEfectiva, 4) + ' Bs/USDT'),
       linea('Equivalente al BCV', '$ ' + num(c.equivUsdBcv, 2)),
       linea('Diferencial vs BCV', signo(c.difBcvVes, 2) + ' Bs (' + signo(c.difBcvPct * 100, 2) + ' %)', cl(c.difBcvVes)),
       linea('Diferencial vs P2P', signo(c.difP2pVes, 2) + ' Bs', cl(c.difP2pVes)),
-      el('div.linea.total', {}, el('span', {}, f.tipo === 'COMPRA' ? 'Total pagado (con comisión Bs)' : 'Total neto recibido'), el('span', {}, ves(c.vesNeto))),
+      el('div.linea.total', {}, el('span', {}, f.tipo === 'COMPRA' ? 'Total pagado (con comisión Bs)' : f.tipo === 'PAGO' ? 'Valor neto cancelado' : 'Total neto recibido'), el('span', {}, ves(c.vesNeto))),
     );
   };
 
@@ -127,7 +139,7 @@ export function pantallaRegistro({ manejarError }) {
       const creada = await datos.registrarOperacion({
         tipo: f.tipo, cartera: f.cartera, fecha: f.fecha, hora: f.hora, montoUsdt: monto, tasa,
         tasaP2p: aNumero(f.tasaP2p) || 0, tasaBcv: aNumero(f.tasaBcv) || 0, comisionUsdt: aNumero(f.comisionUsdt) || 0, comisionVes: aNumero(f.comisionVes) || 0,
-        contraparte: '', metodoPago: '', referencia: '', observaciones: f.observaciones,
+        contraparte: f.tipo === 'PAGO' ? f.contraparte : '', metodoPago: f.tipo === 'PAGO' ? 'Binance Pay' : '', referencia: f.tipo === 'PAGO' ? f.referencia : '', observaciones: f.observaciones,
       });
       toast('Operación ' + creada.id + ' registrada', 'ok');
       navegar('inicio');
@@ -146,6 +158,12 @@ export function pantallaRegistro({ manejarError }) {
 
   function campo(etq, e, claveAyuda) { return el('div.campo', {}, el('label', {}, etq, claveAyuda ? ayuda(claveAyuda) : null), e); }
 
+  tarjetaPago = el('div.tarjeta', { estilo: { display: 'none' } }, el('h2', {}, el('span', {}, 'Pago con Binance Pay', ayuda('pago'))),
+    campo('Beneficiario', iBenef),
+    el('div.fila', {}, campo('Referencia (n.º de orden)', iRef), campo('Factura en Bs (calcula la tasa)', el('div.sufijo', {}, iFactura, el('span', {}, 'Bs')))),
+  );
+  pintarTipo();
+
   const contenido = el('div.pantalla', {},
     cabecera('Registrar', 'Nueva operación en la cartera'),
     el('div.selector-titulo', {}, 'Tipo de operación', ayuda('tipo')), selTipo,
@@ -155,10 +173,11 @@ export function pantallaRegistro({ manejarError }) {
         el('div.tarjeta', {}, el('h2', {}, el('span', {}, 'Operación', ayuda('operacion'))),
           el('div.fila', {}, campo('Fecha', iFecha, 'fechaHora'), campo('Hora', iHora)),
           campo('Monto USDT', el('div.sufijo', {}, iMonto, el('span', {}, 'USDT')), 'monto'),
-          el('div.campo', {}, el('label', {}, 'Tasa de la operación (Bs por USDT)', ayuda('tasa')), el('div.sufijo', {}, iTasa, el('span', {}, 'Bs')), chipsTasa),
+          el('div.campo', {}, el('label', {}, etqTasa, ayuda('tasa')), el('div.sufijo', {}, iTasa, el('span', {}, 'Bs')), chipsTasa),
           el('div', { estilo: { margin: '4px 0 10px' } }, btnRef, ayuda('referencias')),
           cuerpoRef,
         ),
+        tarjetaPago,
         el('div.tarjeta', {}, el('h2', {}, el('span', {}, 'Comisiones', ayuda('comisiones'))),
           el('div.fila', {}, campo('Comisión en USDT', el('div.sufijo', {}, iComUsdt, el('span', {}, 'USDT'))), campo('Comisión en Bs', el('div.sufijo', {}, iComVes, el('span', {}, 'Bs')))),
           notaCom,

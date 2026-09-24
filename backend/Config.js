@@ -19,7 +19,7 @@ const CONFIG = {
   HOJA_BD: 'BD_USDT',
   HOJA_TASAS: 'TASAS',
   CARTERAS: ['CPA BEJUMA', 'PANAMERICANA'],
-  TIPOS: ['COMPRA', 'VENTA'],
+  TIPOS: ['COMPRA', 'VENTA', 'PAGO'],   // PAGO = entrega de USDT a un tercero (Binance Pay) valorada a la tasa pactada
   SESION_HORAS: 12,              // duración de un token de sesión
   CACHE_TASAS_SEG: 300,          // las tasas en vivo se cachean 5 minutos
   MAX_INTENTOS: 10,              // intentos fallidos de autenticación permitidos...

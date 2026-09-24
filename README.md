@@ -161,6 +161,17 @@ Alternativa sin instalar nada: subir el repositorio a GitHub; el workflow `compi
 
 ---
 
+## 4.0 Tipo PAGO y modo tabulador (desde v1.5)
+
+- **PAGO**: entrega de USDT a un tercero con Binance Pay para cancelar una factura. Se registra con beneficiario, número de
+  orden (referencia) y el valor de la factura en Bs, que fija la **tasa pactada** (Bs ÷ USDT). Se calcula como una venta:
+  sale de la cartera al costo promedio, genera resultado realizado y diferenciales vs BCV (cuánto más valía la factura al
+  cambio oficial que los USDT entregados) y vs P2P. Aparece en Inicio, historial, reportes (nuevo reporte "Pagos" y columna
+  en Utilidades) y en el modo tabulador. Comisión por defecto 0 (Binance Pay no cobra).
+- **Modo tabulador** (Historial ▸ botón *Tabla*): tabla editable con todas las operaciones de la cartera; celdas amarillas
+  editables, grises calculadas en vivo con la misma fórmula del backend; "Nueva fila", papelera para eliminar y "Guardar
+  cambios", que envía la acción `actualizar` (revalida, recalcula y reescribe la fila completa) o `registrar` para filas nuevas.
+
 ## 4.1 Comisiones y moneda de los reportes (desde v1.4)
 
 - **Comisión real de Binance P2P (VES):** 0,24 % del total en USDT, descontado en USDT, tanto al comprar como al vender

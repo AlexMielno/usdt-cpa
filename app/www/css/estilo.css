@@ -175,6 +175,8 @@ a { color: var(--amarillo); }
 .op .icono { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 13px; flex-shrink: 0; }
 .op .icono.compra { background: var(--verde-suave); color: var(--verde); }
 .op .icono.venta { background: var(--rojo-suave); color: var(--rojo); }
+.op .icono.pago { background: var(--amarillo-suave); color: var(--amarillo); }
+.selector button.pago.activo { background: var(--amarillo-suave); color: var(--amarillo); }
 .op .icono.anulada { background: rgba(154,163,176,.12); color: var(--texto-3); }
 .op .centro { flex: 1; min-width: 0; }
 .op .titulo { font-weight: 600; display: flex; gap: 8px; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -257,3 +259,22 @@ a { color: var(--amarillo); }
 .ayuda-modal { font-size: 15px; }
 .ayuda-modal .ayuda-titulo { font-size: 18px; margin-bottom: 8px; }
 .enlace { background: none; border: 0; color: var(--amarillo); cursor: pointer; font-size: 13px; padding: 0; }
+
+/* ---- modo tabulador (tabla editable) ---- */
+.pantalla.ancha { max-width: none; }
+.hoja-contenedor { overflow: auto; max-height: calc(100vh - 250px); border: 1px solid var(--borde); border-radius: var(--radio-s); background: var(--tarjeta); }
+table.hoja { border-collapse: separate; border-spacing: 0; font-size: 12.5px; white-space: nowrap; min-width: 100%; }
+table.hoja th { position: sticky; top: 0; z-index: 2; background: var(--tarjeta-2); color: var(--amarillo); font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; padding: 7px 6px; border-bottom: 1px solid var(--borde); text-align: left; }
+table.hoja th.calc { color: var(--texto-3); }
+table.hoja th.fija, table.hoja td.fija { position: sticky; left: 0; z-index: 3; background: var(--tarjeta-2); min-width: 86px; }
+table.hoja th.fija { z-index: 4; }
+table.hoja td { padding: 2px 3px; border-bottom: 1px solid var(--borde); vertical-align: middle; }
+table.hoja td.calc { text-align: right; padding: 2px 8px; color: var(--texto-2); font-variant-numeric: tabular-nums; background: rgba(255,255,255,.015); }
+table.hoja tr.sucia td { background: rgba(240,185,11,.06); }
+table.hoja tr.anulada td:not(.calc) .celda { text-decoration: line-through; color: var(--texto-3); }
+table.hoja .celda { width: 100%; min-width: 80px; background: rgba(240,185,11,.04); border: 1px solid transparent; border-radius: 6px; color: var(--texto); padding: 6px 7px; font: inherit; font-variant-numeric: tabular-nums; }
+table.hoja input.celda[inputmode=decimal] { text-align: right; }
+table.hoja .celda:focus { outline: none; border-color: var(--amarillo); background: var(--amarillo-suave); }
+table.hoja .celda.error { border-color: var(--rojo); background: var(--rojo-suave); }
+table.hoja select.celda { appearance: auto; }
+.btn-icono.peq { width: 30px; height: 30px; }

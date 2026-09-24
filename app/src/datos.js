@@ -72,6 +72,15 @@ export async function anularOperacion(id, motivo) {
   emitir('operaciones', estado.operaciones);
 }
 
+/** Modo tabulador: reemplaza los campos editables; el backend devuelve la operación recalculada. */
+export async function actualizarOperacion(id, cambios) {
+  const op = await api.actualizar(id, cambios);
+  estado.operaciones = estado.operaciones.map(o => o.id === id ? op : o);
+  await almacen.guardar('operaciones', { datos: estado.operaciones, hora: estado.operacionesHora });
+  emitir('operaciones', estado.operaciones);
+  return op;
+}
+
 export async function borrarOperacion(id) {
   await api.borrar(id);
   estado.operaciones = estado.operaciones.filter(o => o.id !== id);

@@ -81,6 +81,20 @@ async function main() {
   await esperar(200); await foto('06-registro-venta');
   await clicTexto('Registrar operación'); await esperar(3000);
 
+  // Registrar un PAGO con Binance Pay (factura en Bs calcula la tasa pactada)
+  await clic('nav .principal'); await esperar(1200);
+  await clicTexto('PAGO con USDT'); await esperar(200);
+  await escribir('input[name=montoUsdt]', '1000');
+  await escribir('input[name=contraparte]', 'JUAN-25 · juandeoliveira05@gmail.com');
+  await escribir('input[name=referencia]', '455824235065761792');
+  await escribir('input[name=facturaVes]', '1000000');
+  await esperar(300); await foto('21-registro-pago');
+  const tasaPago = await js(`document.querySelector('input[name=tasa]').value`);
+  if (!/^1\.000,0000$/.test(tasaPago)) errores.push('La factura en Bs no calculó la tasa pactada (tasa=' + tasaPago + ')');
+  await clicTexto('Registrar operación'); await esperar(3000);
+  t = await texto();
+  if (!/1\.000,00 USDT/.test(t)) errores.push('No se ve el pago registrado en inicio');
+
   // Historial y detalle
   await clicTexto('Historial'); await esperar(1200); await foto('07-historial');
   await clic('.op'); await esperar(500); await foto('08-detalle');
@@ -103,6 +117,26 @@ async function main() {
   if (opsDespues !== opsAntes - 1) errores.push('Borrar no eliminó la operación (' + opsAntes + ' -> ' + opsDespues + ')');
   if (/ANULADA/.test(await texto())) errores.push('La operación anulada sigue apareciendo tras borrarla');
   console.log('anular/borrar: operaciones ' + opsAntes + ' -> ' + opsDespues);
+  // Modo tabulador: editar una tasa, agregar una fila nueva y guardar
+  await clicTexto('Tabla'); await esperar(1500); await foto('22-tabla');
+  const filasAntes = await js(`document.querySelectorAll('table.hoja tbody tr').length`);
+  await escribir('.celda[data-col="tasa"][data-fila="0"]', '961');
+  await esperar(300);
+  const sucias = await js(`document.querySelectorAll('table.hoja tr.sucia').length`);
+  if (sucias !== 1) errores.push('La fila editada no quedó marcada como cambiada (' + sucias + ')');
+  await clicTexto('Nueva fila'); await esperar(300);
+  await escribir('.celda[data-col="montoUsdt"][data-fila="0"]', '10');
+  await escribir('.celda[data-col="tasa"][data-fila="0"]', '950');
+  await escribir('.celda[data-col="observaciones"][data-fila="0"]', 'fila desde la tabla');
+  await esperar(300); await foto('23-tabla-editada');
+  await clicTexto('Guardar cambios'); await esperarHasta(() => js(`document.body.innerText.includes('guardada')`), 20000); await esperar(1500);
+  const filasDespues = await js(`document.querySelectorAll('table.hoja tbody tr').length`);
+  if (filasDespues !== filasAntes + 1) errores.push('La fila nueva de la tabla no se guardó (' + filasAntes + ' -> ' + filasDespues + ')');
+  if (await js(`document.querySelectorAll('table.hoja tr.sucia').length`) !== 0) errores.push('Quedaron filas sin guardar tras Guardar cambios');
+  const tasaGuardada = await js(`[...document.querySelectorAll('table.hoja tbody tr')].map(tr => tr.querySelector('.celda[data-col="tasa"]').value).join('|')`);
+  if (!tasaGuardada.includes('961,0000')) errores.push('La tasa editada no se conservó tras guardar: ' + tasaGuardada);
+  console.log('tabla: filas ' + filasAntes + ' -> ' + filasDespues + ' · tasas ' + tasaGuardada);
+  await foto('24-tabla-guardada');
   // Ayuda: burbuja al pasar el mouse y ventana al hacer clic
   await clicTexto('Inicio'); await esperar(800);
   await js(`(function(){const b=document.querySelector('.btn-ayuda'); b.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true})); return true;})()`);

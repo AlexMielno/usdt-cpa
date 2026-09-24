@@ -1,7 +1,7 @@
 /** Historial con filtros, agrupado por mes, y detalle con anulación / edición de notas. */
 import { el, montar, toast, icono, modal, confirmar, cargando, ayuda } from '../ui.js';
 import { cabecera, selectorCartera, conNavegacion } from './cascaron.js';
-import { estado, en } from '../estado.js';
+import { estado, en, navegar } from '../estado.js';
 import * as datos from '../datos.js';
 import { num, ves, signo, fechaCorta, fechaLarga, mesDe, nombreMes, pct, signoUsd, enUsd } from '../formato.js';
 
@@ -9,7 +9,7 @@ export function filaOperacion(o) {
   const anulada = o.estado === 'ANULADA';
   const dif = o.difP2pVes;
   return el('div.op', { clase: anulada ? 'anulada' : '', onClick: () => verDetalle(o) },
-    el('div.icono', { clase: anulada ? 'anulada' : String(o.tipo || '').toLowerCase() }, o.tipo === 'COMPRA' ? 'C' : 'V'),
+    el('div.icono', { clase: anulada ? 'anulada' : String(o.tipo || '').toLowerCase() }, o.tipo === 'COMPRA' ? 'C' : o.tipo === 'PAGO' ? 'P' : 'V'),
     el('div.centro', {},
       el('div.titulo', {}, num(o.montoUsdt, 2) + ' USDT @ ' + num(o.tasa, 2), anulada ? el('span.etiqueta.anulada', {}, 'ANULADA') : null),
       el('div.detalle', {}, fechaCorta(o.fecha) + ' ' + (o.hora || '') + (o.observaciones ? ' · ' + o.observaciones : (o.contraparte ? ' · ' + o.contraparte : '')))),
@@ -32,14 +32,14 @@ export function verDetalle(o) {
         fila('Total en bolívares', ves(o.totalVes)),
         fila('Comisiones', num(o.comisionUsdt, 4) + ' USDT · ' + ves(o.comisionVes)),
         fila(o.tipo === 'COMPRA' ? 'USDT netos recibidos' : 'USDT entregados', num(o.usdtNeto, 4)),
-        fila(o.tipo === 'COMPRA' ? 'Total pagado' : 'Total neto recibido', ves(o.vesNeto)),
+        fila(o.tipo === 'COMPRA' ? 'Total pagado' : o.tipo === 'PAGO' ? 'Valor cancelado (factura)' : 'Total neto recibido', ves(o.vesNeto)),
         fila('Tasa efectiva', num(o.tasaEfectiva, 4)),
         fila('Tasa BCV del día', num(o.tasaBcv, 4)),
         fila('Tasa P2P de referencia', num(o.tasaP2p, 4)),
         fila('Diferencial vs BCV', signoUsd(enUsd(o.difBcvVes, o.tasaBcv)) + ' · ' + signo(o.difBcvVes, 2) + ' Bs (' + signo(o.difBcvPct * 100, 2) + ' %)', cl(o.difBcvVes)),
         fila('Diferencial vs P2P', signoUsd(enUsd(o.difP2pVes, o.tasaBcv)) + ' · ' + signo(o.difP2pVes, 2) + ' Bs', cl(o.difP2pVes)),
         fila('Equivalente USD al BCV', '$ ' + num(o.equivUsdBcv, 2)),
-        o.contraparte ? fila('Contraparte', o.contraparte) : null,
+        o.contraparte ? fila(o.tipo === 'PAGO' ? 'Beneficiario' : 'Contraparte', o.contraparte) : null,
         (o.metodoPago || o.referencia) ? fila('Método / referencia', (o.metodoPago || '—') + ' · ' + (o.referencia || '—')) : null,
         fila('Observaciones', o.observaciones || '—'),
         fila('Registrado desde', (o.dispositivo || '—') + ' · ' + (o.registrado ? new Date(o.registrado).toLocaleString('es-VE') : '')),
@@ -83,7 +83,7 @@ export function pantallaHistorial({ manejarError }) {
   const selMes = el('select', { estilo: { background: 'var(--fondo-2)', color: 'var(--texto)', border: '1px solid var(--borde)', borderRadius: '999px', padding: '8px 12px', fontSize: '14px' } });
   selMes.addEventListener('change', () => { mes = selMes.value; pintar(); });
   const chips = el('div.chips');
-  const pintarChips = () => chips.replaceChildren(...[['TODAS', 'Todas'], ['COMPRA', 'Compras'], ['VENTA', 'Ventas'], ['ANULADA', 'Anuladas']].map(([v, t]) => el('button.chip', { type: 'button', clase: filtroTipo === v ? 'activo' : '', onClick: () => { filtroTipo = v; pintarChips(); pintar(); } }, t)));
+  const pintarChips = () => chips.replaceChildren(...[['TODAS', 'Todas'], ['COMPRA', 'Compras'], ['VENTA', 'Ventas'], ['PAGO', 'Pagos'], ['ANULADA', 'Anuladas']].map(([v, t]) => el('button.chip', { type: 'button', clase: filtroTipo === v ? 'activo' : '', onClick: () => { filtroTipo = v; pintarChips(); pintar(); } }, t)));
   pintarChips();
 
   const pintar = () => {
@@ -102,9 +102,10 @@ export function pantallaHistorial({ manejarError }) {
       const g = grupos[m], activas = g.filter(o => o.estado === 'ACTIVA');
       const compras = activas.filter(o => o.tipo === 'COMPRA').reduce((s, o) => s + o.usdtNeto, 0);
       const ventas = activas.filter(o => o.tipo === 'VENTA').reduce((s, o) => s + o.usdtNeto, 0);
+      const pagos = activas.filter(o => o.tipo === 'PAGO').reduce((s, o) => s + o.usdtNeto, 0);
       const difP2p = activas.reduce((s, o) => s + o.difP2pVes, 0), difBcv = activas.reduce((s, o) => s + o.difBcvVes, 0);
       return el('div.tarjeta', {},
-        el('h2', {}, el('span', {}, nombreMes(m)), el('span.accion.mini', {}, `C ${num(compras, 0)} · V ${num(ventas, 0)} USDT`)),
+        el('h2', {}, el('span', {}, nombreMes(m)), el('span.accion.mini', {}, `C ${num(compras, 0)} · V ${num(ventas, 0)}` + (pagos ? ` · P ${num(pagos, 0)}` : '') + ' USDT')),
         el('div.mini', { estilo: { marginBottom: '6px' } }, 'Dif. P2P ', el('b', { clase: difP2p >= 0 ? 'positivo' : 'negativo' }, signo(difP2p, 0) + ' Bs'), ' · Dif. BCV ', el('b', { clase: difBcv >= 0 ? 'positivo' : 'negativo' }, signo(difBcv, 0) + ' Bs')),
         g.map(filaOperacion));
     }));
@@ -112,7 +113,7 @@ export function pantallaHistorial({ manejarError }) {
 
   const btnRefrescar = el('button.btn-icono', { type: 'button', 'aria-label': 'Actualizar', onClick: async () => { btnRefrescar.classList.add('girando'); try { await datos.cargarOperaciones(true); pintar(); } catch (e) { manejarError(e); } finally { btnRefrescar.classList.remove('girando'); } } }, icono('refrescar'));
   const contenido = el('div.pantalla', {},
-    cabecera('Historial', 'Operaciones registradas', btnRefrescar),
+    cabecera('Historial', 'Operaciones registradas', el('div', { estilo: { display: 'flex', alignItems: 'center', gap: '6px' } }, el('button.btn.secundario.peq', { type: 'button', onClick: () => navegar('tabla') }, icono('lista'), 'Tabla'), btnRefrescar)),
     selectorCartera(pintar),
     el('div.filtros', {}, busq, selMes, ayuda('filtros')),
     el('div', { estilo: { display: 'flex', alignItems: 'center', gap: '4px' } }, chips, ayuda('detalleOperacion')),

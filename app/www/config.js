@@ -26,6 +26,7 @@ window.CONFIG_USDT = {
     // no hay comisión en bolívares. Si el banco cobrara pago móvil, se puede agregar en Ajustes.
     compra: { usdtPct: 0.24, usdtFijo: 0, vesPct: 0, vesFijo: 0 },
     venta:  { usdtPct: 0.24, usdtFijo: 0, vesPct: 0, vesFijo: 0 },
+    pago:   { usdtPct: 0, usdtFijo: 0, vesPct: 0, vesFijo: 0 },      // Binance Pay no cobra comisión
   },
 
   // Actualizaciones: repositorio de GitHub donde se publican las versiones (Releases).
@@ -33,5 +34,5 @@ window.CONFIG_USDT = {
   ACTUALIZACIONES: { propietario: 'AlexMielno', repositorio: 'usdt-cpa' },
 
   // Versión de esta compilación (la actualiza herramientas/nueva_version.js)
-  VERSION: '1.4.0',
+  VERSION: '1.5.0',
 };

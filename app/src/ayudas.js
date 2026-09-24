@@ -36,9 +36,9 @@ export const AYUDAS = {
   },
   // ---------- registro ----------
   tipo: {
-    titulo: 'Compra o venta',
-    texto: 'COMPRA: entregas bolívares y recibes USDT. VENTA: entregas USDT y recibes bolívares. Cambia el color, la tasa sugerida (vendedores o compradores) y el signo de los diferenciales.',
-    ejemplos: ['Pagas 95.000 Bs por 100 USDT → COMPRA.', 'Un cliente te transfiere 48.000 Bs por 50 USDT → VENTA.'],
+    titulo: 'Compra, venta o pago',
+    texto: 'COMPRA: entregas bolívares y recibes USDT. VENTA: entregas USDT y recibes bolívares. PAGO: entregas USDT a un proveedor o tercero (Binance Pay) para cancelar una factura; se valora a la tasa pactada y se calcula igual que una venta, con su diferencial vs BCV y vs P2P.',
+    ejemplos: ['Pagas 95.000 Bs por 100 USDT → COMPRA.', 'Un cliente te transfiere 48.000 Bs por 50 USDT → VENTA.', 'Pagas 1.000 USDT a un proveedor por una factura de 1.000.000 Bs → PAGO; al BCV esa factura vale $ 1.201, así que el diferencial es +$ 201 a favor.'],
   },
   fechaHora: {
     titulo: 'Fecha y hora',
@@ -147,6 +147,16 @@ export const AYUDAS = {
     titulo: 'Diagnóstico',
     texto: 'Lista los errores que la app haya encontrado en esta sesión (por ejemplo, si una sección de Inicio quedó vacía). "Copiar diagnóstico" copia la versión, la plataforma y esos errores para pegarlos en el chat de soporte. No incluye tu PIN ni la clave de enlace.',
     ejemplos: ['Inicio no muestra las tasas: abre Ajustes ▸ Diagnóstico, pulsa "Copiar diagnóstico" y pégalo en el chat.'],
+  },
+  pago: {
+    titulo: 'Pago con Binance Pay',
+    texto: 'Datos del tercero al que entregas los USDT. "Factura en Bs" es el valor que cancelas con esos USDT: al escribirlo la app calcula la tasa pactada (Bs ÷ USDT). La referencia es el número de orden de Binance Pay, útil para no registrar dos veces el mismo pago.',
+    ejemplos: ['Pago de 1.000 USDT por una factura de 1.000.000 Bs → tasa pactada 1.000,00.', 'Beneficiario "JUAN-25 · juandeoliveira05@gmail.com", referencia 455824235065761792.'],
+  },
+  tabla: {
+    titulo: 'Modo tabulador',
+    texto: 'Todas las operaciones de la cartera en una tabla editable, como una hoja de cálculo. Cambia cualquier celda amarilla (fecha, tipo, monto, tasa, comisiones, referencias, estado); las columnas grises (totales, tasa efectiva, diferenciales) se recalculan al instante. "Nueva fila" agrega una operación; la papelera la elimina para siempre. Nada se envía hasta pulsar "Guardar cambios": el backend revalida, recalcula y reescribe la fila en la hoja.',
+    ejemplos: ['Escribiste 950 en vez de 960 en una compra → corrige la tasa y guarda; el diferencial se recalcula solo.', 'Tab avanza de celda, Enter o ↓ baja a la misma columna de la siguiente fila.'],
   },
   acercaDe: {
     titulo: 'Acerca de y actualizaciones',

@@ -14,7 +14,7 @@ export function calcularOperacion(d) {
   const comisionUsdt = Number(d.comisionUsdt) || 0, comisionVes = Number(d.comisionVes) || 0;
   const tasaBcv = Number(d.tasaBcv) || 0, tasaP2p = Number(d.tasaP2p) || 0;
   const totalVes = monto * tasa;
-  const esCompra = d.tipo === 'COMPRA';
+  const esCompra = d.tipo === 'COMPRA';   // VENTA y PAGO entregan USDT y reciben/cancelan un valor en Bs
   const usdtNeto = esCompra ? monto - comisionUsdt : monto + comisionUsdt;
   const vesNeto = esCompra ? totalVes + comisionVes : totalVes - comisionVes;
   const tasaEfectiva = usdtNeto > 0 ? vesNeto / usdtNeto : 0;
@@ -66,7 +66,7 @@ export function resumirCartera(operaciones, cartera) {
   const r = { saldoUsdt: 0, costoPromedio: 0, costoTotalVes: 0, comprasUsdt: 0, comprasVes: 0, ventasUsdt: 0, ventasVes: 0,
               comisionesUsdt: 0, comisionesVes: 0, difBcvVes: 0, difP2pVes: 0, resultadoRealizadoVes: 0, equivUsdBcvCompras: 0, equivUsdBcvVentas: 0,
               // en dólares al BCV del día de cada operación (lo que se reporta a la gerencia)
-              difBcvUsd: 0, difP2pUsd: 0, resultadoRealizadoUsd: 0, comisionesUsd: 0, operaciones: ops.length };
+              difBcvUsd: 0, difP2pUsd: 0, resultadoRealizadoUsd: 0, comisionesUsd: 0, pagosUsdt: 0, pagosVes: 0, operaciones: ops.length };
   ops.forEach(o => {
     const bcv = Number(o.tasaBcv) > 0 ? Number(o.tasaBcv) : 0;
     r.comisionesUsdt += o.comisionUsdt; r.comisionesVes += o.comisionVes;
@@ -77,7 +77,8 @@ export function resumirCartera(operaciones, cartera) {
       r.costoTotalVes += o.vesNeto; r.saldoUsdt += o.usdtNeto;
       r.costoPromedio = r.saldoUsdt > 0 ? r.costoTotalVes / r.saldoUsdt : 0;
     } else {
-      r.ventasUsdt += o.usdtNeto; r.ventasVes += o.vesNeto; r.equivUsdBcvVentas += o.equivUsdBcv;
+      if (o.tipo === 'PAGO') { r.pagosUsdt += o.usdtNeto; r.pagosVes += o.vesNeto; }
+      else { r.ventasUsdt += o.usdtNeto; r.ventasVes += o.vesNeto; r.equivUsdBcvVentas += o.equivUsdBcv; }
       if (r.costoPromedio > 0) { const res = (o.tasaEfectiva - r.costoPromedio) * o.usdtNeto; r.resultadoRealizadoVes += res; if (bcv) r.resultadoRealizadoUsd += res / bcv; }
       r.saldoUsdt -= o.usdtNeto;
       r.costoTotalVes = r.saldoUsdt > 0 ? r.saldoUsdt * r.costoPromedio : 0;

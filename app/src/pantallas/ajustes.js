@@ -87,9 +87,9 @@ export function pantallaAjustes({ alDesvincular, alBloquear }) {
       el('div.fila', {},
         el('div.campo', {}, el('label', {}, '% del total en Bs'), el('div.sufijo', {}, inputNum(tipo, 'vesPct', reglas[tipo].vesPct), el('span', {}, '%'))),
         el('div.campo', {}, el('label', {}, 'Bs fijos'), el('div.sufijo', {}, inputNum(tipo, 'vesFijo', reglas[tipo].vesFijo), el('span', {}, 'Bs')))));
-    const leer = () => ({ compra: {}, venta: {} });
+    const leer = () => ({ compra: {}, venta: {}, pago: {} });
     zonaComisiones.replaceChildren(
-      bloque('compra', 'Al COMPRAR USDT'), bloque('venta', 'Al VENDER USDT'),
+      bloque('compra', 'Al COMPRAR USDT'), bloque('venta', 'Al VENDER USDT'), bloque('pago', 'Al PAGAR con USDT (Binance Pay)'),
       el('div.acciones', {},
         el('button.btn.fantasma', { type: 'button', onClick: async () => { pintarComisiones(reglasPorDefecto()); } }, 'Valores de fábrica'),
         el('button.btn', { type: 'button', onClick: async () => {

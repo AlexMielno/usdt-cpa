@@ -6,7 +6,7 @@ import * as datos from '../datos.js';
 import { reporteUtilidades, reporteDiferenciales, reporteOperaciones, rangoPredefinido } from '../reportes.js';
 import { exportarPdf } from '../pdf.js';
 
-const TIPOS = [['utilidades', 'Utilidades'], ['diferenciales', 'Diferenciales'], ['compras', 'Compras'], ['ventas', 'Ventas']];
+const TIPOS = [['utilidades', 'Utilidades'], ['diferenciales', 'Diferenciales'], ['compras', 'Compras'], ['ventas', 'Ventas'], ['pagos', 'Pagos']];
 const RANGOS = [['mes', 'Este mes'], ['mes_anterior', 'Mes anterior'], ['30', '30 días'], ['trimestre', 'Trimestre'], ['anio', 'Este año'], ['todo', 'Todo']];
 
 export function pantallaReportes({ manejarError }) {
@@ -32,7 +32,7 @@ export function pantallaReportes({ manejarError }) {
     const todas = estado.operaciones;
     if (tipo === 'utilidades') return reporteUtilidades(todas, desde, hasta, cartera);
     if (tipo === 'diferenciales') return reporteDiferenciales(todas, desde, hasta, cartera);
-    return reporteOperaciones(todas, desde, hasta, cartera, tipo === 'compras' ? 'COMPRA' : 'VENTA');
+    return reporteOperaciones(todas, desde, hasta, cartera, tipo === 'compras' ? 'COMPRA' : tipo === 'pagos' ? 'PAGO' : 'VENTA');
   };
 
   const btnPdf = el('button.btn', { type: 'button', onClick: async () => {
