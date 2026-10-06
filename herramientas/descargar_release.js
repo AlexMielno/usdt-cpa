@@ -17,6 +17,6 @@ const tag = 'v' + version;
 // se borran los ejecutables de versiones anteriores para que en la raíz quede solo la última
 fs.readdirSync(raiz).filter(f => /^USDT-CPA.*\.(exe|apk)$/i.test(f)).forEach(f => fs.unlinkSync(path.join(raiz, f)));
 
-execFileSync('gh', ['release', 'download', tag, '--pattern', '*.exe', '--pattern', '*.apk', '--dir', raiz, '--clobber'], { stdio: 'inherit', shell: process.platform === 'win32' });
+execFileSync('gh', ['release', 'download', tag, '--pattern', '*.exe', '--pattern', '*.apk', '--dir', raiz, '--clobber'], { stdio: 'inherit' });
 const bajados = fs.readdirSync(raiz).filter(f => /^USDT-CPA.*\.(exe|apk)$/i.test(f));
 console.log('Ejecutables de ' + tag + ' en la raíz: ' + bajados.join(', '));
