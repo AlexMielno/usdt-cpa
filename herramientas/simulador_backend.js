@@ -23,7 +23,7 @@ const PUERTO = parseInt(process.argv[2], 10) || 8787;
 const DIR = path.join(__dirname, '..', 'backend');
 const CLAVE_PRUEBA = 'CLAVE-DE-PRUEBA-LOCAL-1234';
 const ZONA = 'America/Caracas';   // zona del script (appsscript.json) y de los libros
-const FIXTURE_BANCOS = path.join(__dirname, 'fixtures', 'bancos_muestra.json');
+const FIXTURE_BANCOS = process.env.SIM_BANCOS_FIXTURE || path.join(__dirname, 'fixtures', 'bancos_muestra.json');
 
 // Como Sheets: un texto que empieza con apóstrofo se guarda sin él (el apóstrofo solo fuerza "texto")
 const valorCelda = v => (typeof v === 'string' && v.charAt(0) === "'" ? v.slice(1) : v);

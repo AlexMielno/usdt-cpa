@@ -28,7 +28,7 @@ import {
 
 const TIPOS = ['COMPRA', 'VENTA', 'PAGO', 'EXCLUIR'];
 const RANGOS = [['mes', 'Este mes'], ['mes_anterior', 'Mes anterior'], ['trimestre', 'Trimestre'], ['anio', 'Este año'], ['todo', 'Todo']];
-const FILTROS = [['todas', 'Todas'], ['SUGERIDA', 'Sugeridas'], ['REVISAR', 'Por revisar'], ['CONFIRMADA', 'Confirmadas'], ['EXCLUIDA', 'Excluidas']];
+const FILTROS = [['conDif', 'Con diferencial'], ['todas', 'Todas'], ['SUGERIDA', 'Sugeridas'], ['REVISAR', 'Por revisar'], ['CONFIRMADA', 'Confirmadas'], ['EXCLUIDA', 'Excluidas']];
 const VISTAS = [['conciliar', 'Conciliar'], ['reporte', 'Reporte']];
 const OPCIONES_EMPAREJAR = { diasTolerancia: 3, tolUsd: 0.015 };
 const DIAS = [[3, '±3 días'], [7, '±7 días'], [15, '±15 días'], [30, '±30 días'], [0, 'Todas las fechas']];
@@ -48,7 +48,7 @@ const MAX_SELECTOR = 300, MAX_SIN_PAREJA = 300;
 
 /** Lo que sobrevive al salir y volver (p. ej. tras el bloqueo por inactividad): filtros y cambios sin guardar. */
 const memoria = {
-  rango: '', desde: null, hasta: '', vista: 'conciliar', categoria: 'todas', filtro: 'todas', texto: '',
+  rango: '', desde: null, hasta: '', vista: 'conciliar', categoria: 'todas', filtro: 'conDif', texto: '',
   soloConfirmadas: false, verSinPareja: false,
   cambios: new Map(),     // clave -> instantánea de la fila editada { modo, confirmada, quitada, bancoElegido, edicion }
   manuales: new Map(),    // clave -> op manual creada desde un movimiento bancario y aún no guardada
@@ -435,7 +435,7 @@ export function pantallaDiferencial({ manejarError }) {
     f.modo = 'manual'; f.edicion = edicionManual(op); f.bcvSug = 0;
     recalcular(f); f.confirmada = !incompleta(f);
     filas.push(f); ordenar(); recordar(f);
-    memoria.filtro = 'todas'; memoria.texto = ''; busq.value = '';
+    memoria.filtro = 'conDif'; memoria.texto = ''; busq.value = '';
     if (memoria.categoria !== 'todas' && memoria.categoria !== op.categoria) memoria.categoria = 'todas';
     pintarVista();
     if (f.dom && f.dom.usdt) { f.dom.usdt.scrollIntoView({ block: 'center' }); f.dom.usdt.focus(); f.dom.usdt.select(); }
@@ -638,7 +638,7 @@ export function pantallaDiferencial({ manejarError }) {
     return [fechaCorta(f.op.fecha), f.op.fechaTexto, f.op.descripcion, f.op.partida, f.op.ref, num(usdtDe(f), 2), e.banco, e.tipo, e.nota, e.refs.join(' '), etiquetaCategoria(e.categoria)]
       .join(' ').toLowerCase().includes(t);
   };
-  const visibles = () => vivas().filter(f => enCategoria(f) && (memoria.filtro === 'todas' || estadoDe(f) === memoria.filtro) && pasaTexto(f));
+  const visibles = () => vivas().filter(f => enCategoria(f) && (memoria.filtro === 'todas' || (memoria.filtro === 'conDif' ? estadoDe(f) !== 'EXCLUIDA' : estadoDe(f) === memoria.filtro)) && pasaTexto(f));
   const origenDe = (op) => op.manual ? 'manual · ' + (op.bancoSugerido || hojaDe(op.ref))
     : esDerivada(op) ? (op.bancoSugerido || hojaDe(op.ref)) + ' · diferencial' : hojaDe(op.ref) + ' fila ' + (op.fila || '?');
   const asegurarOpcion = (select, v, texto) => { if (v && ![...select.options].some(o => o.value === v)) select.appendChild(el('option', { value: v }, texto || v)); };

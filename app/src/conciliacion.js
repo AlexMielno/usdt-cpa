@@ -30,7 +30,7 @@ export const CATEGORIAS = [['usdt', 'USDT (Binance)'], ['efectivo', 'Efectivo $'
 const NOMBRE_CATEGORIA = Object.fromEntries(CATEGORIAS);
 const TITULO_CATEGORIA = { usdt: 'USDT (Binance)', efectivo: 'Efectivo $', materia: 'Materia prima y clientes', otros: 'Otros pagos' };
 
-const OPCIONES_DEF = { diasTolerancia: 3, tolUsd: 0.015, diasAmplios: 15 };
+const OPCIONES_DEF = { diasTolerancia: 3, tolUsd: 0.015, diasAmplios: 30 };
 const RATIO_MIN = 0.9, RATIO_MAX = 2.5;      // tasa pactada razonable respecto al BCV
 const DIAS_CANDIDATOS = 7;                    // ventana de la lista de candidatos para el selector manual
 const MAX_POOL = 16, MAX_NODOS = 150000;      // límites de la búsqueda de combinaciones de transferencias
@@ -515,7 +515,7 @@ function subconjuntosPorTamano(lista, minimo) {
  *  más cercana (±4 filas) cuya línea principal es de la operación.
  * Las ops derivadas (op.derivada) reciben la sugerencia de derivarDeDiferenciales calculada DESPUÉS de los activos.
  *
- * `opciones`: { diasTolerancia: 3, tolUsd: 0.015, diasAmplios: 15, tasas?, decisiones?, usados? }. Con `decisiones`
+ * `opciones`: { diasTolerancia: 3, tolUsd: 0.015, diasAmplios: 30, tasas?, decisiones?, usados? }. Con `decisiones`
  * (guardadas) esas ops conservan sus refs y nadie más puede usarlas.
  */
 export function emparejar(ops, movimientos, opciones) {
@@ -765,10 +765,12 @@ function construirSugerencias(ctx, e) {
     motivo = (e.ops.length === 2 ? 'Pagada junto con otra operación' : 'Pagada junto con ' + (e.ops.length - 1) + ' operaciones más') + ' del ' + ddmm(op0.fecha) + ': ' + nL + ' ' + (nL === 1 ? 'transferencia' : 'transferencias') + ' ' + nombreClase
       + (nD ? ' + ' + nD + ' de diferencial' : '') + ' en ' + banco + (total !== null ? ' por ' + ves(total) : '') + ' (' + num(montoOps) + ' ' + u + ' en total). Se reparte a la tasa promedio' + (tasaP ? ' ' + num(tasaP) : '') + '.' + textoFecha;
   } else if (e.fase === 'lejana' || e.fase === 'otroBanco' || e.fase === 'otro') {
-    confianza = 'baja';
+    // Monto exacto pero el banco lo registró otro día: es lo normal (BINANCE anota la orden; el banco, el pago, a veces
+    // semanas después). Si además trae su línea de diferencial, cuenta como media (se incluye en el reporte).
+    confianza = e.fase === 'lejana' && nD ? 'media' : 'baja';
     if (e.fase === 'otro') motivo = 'Solo se encontró una línea no marcada como ' + (clasePrincipal(op0) === 'EFECTIVO' ? 'EFECTIVO DOLARES' : 'BINANCE') + ' («' + String(e.lineas[0].m.descripcion || '').trim() + '», partida ' + String(e.lineas[0].m.partida || '').trim() + ') por ~' + num(sumaLineas) + ' ' + u + '. Revisa.';
     else if (e.fase === 'otroBanco') motivo = 'No apareció en ' + op0.bancoSugerido + '; se encontró en ' + banco + ' el ' + ddmm(e.lineas[0].fecha) + ': ' + textoLineas + textoDifs + '. Revisa.' + textoTasa;
-    else motivo = 'Monto exacto en ' + banco + ', pero ' + plural(dias, 'día', 'días') + (difDias(op0.fecha, fechasL[0]) < 0 ? ' antes' : ' después') + ' (' + fechasL.map(ddmm).join(' y ') + '): ' + textoLineas + textoDifs + '. Revisa la fecha.' + textoTasa;
+    else motivo = 'Monto exacto en ' + banco + ', registrado ' + plural(dias, 'día', 'días') + (difDias(op0.fecha, fechasL[0]) < 0 ? ' antes' : ' después') + ' (' + fechasL.map(ddmm).join(' y ') + '): ' + textoLineas + textoDifs + '.' + (nD ? ' La fecha distinta es normal (BINANCE anota la orden y el banco el pago).' : ' Sin línea de diferencial: revisa la fecha.') + textoTasa;
   } else {
     const razones = [];
     if (!nD && !soloDolares) razones.push('sin línea de diferencial: queda a tasa BCV, revisa si falta el diferencial');
