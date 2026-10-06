@@ -10,23 +10,36 @@ export class ErrorApi extends Error { constructor(codigo, mensaje) { super(mensa
 
 const cfg = () => window.CONFIG_USDT || {};
 
+const ESPERAS_REINTENTO = [800, 2000, 4000];   // ms entre intentos cuando Google responde una página de error (404/5xx)
+const pausa = (ms) => new Promise(r => setTimeout(r, ms));
+
+/**
+ * Envía una petición al backend. Apps Script, sobre todo justo después de publicar una versión o cuando
+ * la app dispara varias llamadas a la vez, a veces responde con la página genérica de error de Google
+ * (HTTP 404/5xx sin JSON); en ese caso se reintenta hasta 3 veces con una espera creciente.
+ */
 async function enviar(cuerpo) {
   if (!cfg().API_URL) throw new ErrorApi('sin_url', 'Falta configurar API_URL en config.js');
-  let r;
-  try {
-    r = await http(cfg().API_URL, { metodo: 'POST', cabeceras: { 'Content-Type': 'text/plain;charset=utf-8' }, cuerpo: JSON.stringify(cuerpo) });
-  } catch (e) {
-    throw new ErrorApi('red', 'Sin conexión con el servidor (' + (e.message || 'red') + ')');
-  }
-  let json;
-  try { json = JSON.parse(r.texto); } catch (e) {
-    if (/necesitas acceso|need access|Toegang|autorizaci|authorization/i.test(r.texto)) {
-      throw new ErrorApi('backend_sin_autorizar', 'El backend aún no está autorizado en Google: abre el proyecto de Apps Script y ejecuta configuracionInicial().');
+  const carga = JSON.stringify(cuerpo);
+  for (let intento = 0; ; intento++) {
+    let r;
+    try {
+      r = await http(cfg().API_URL, { metodo: 'POST', cabeceras: { 'Content-Type': 'text/plain;charset=utf-8' }, cuerpo: carga });
+    } catch (e) {
+      if (intento < ESPERAS_REINTENTO.length) { await pausa(ESPERAS_REINTENTO[intento]); continue; }
+      throw new ErrorApi('red', 'Sin conexión con el servidor (' + (e.message || 'red') + ')');
     }
-    throw new ErrorApi('respuesta_invalida', 'El servidor respondió algo inesperado (HTTP ' + r.status + ')');
+    let json;
+    try { json = JSON.parse(r.texto); } catch (e) {
+      if (/necesitas acceso|need access|Toegang|autorizaci|authorization/i.test(r.texto)) {
+        throw new ErrorApi('backend_sin_autorizar', 'El backend aún no está autorizado en Google: abre el proyecto de Apps Script y ejecuta configuracionInicial().');
+      }
+      if (intento < ESPERAS_REINTENTO.length && (r.status >= 400 || !String(r.texto || '').trim())) { await pausa(ESPERAS_REINTENTO[intento]); continue; }
+      throw new ErrorApi('respuesta_invalida', 'El servidor respondió algo inesperado (HTTP ' + r.status + ') tras ' + (intento + 1) + ' intentos. Vuelve a intentarlo en unos segundos.');
+    }
+    if (!json.ok) throw new ErrorApi(json.error || 'error', json.mensaje || 'Error desconocido');
+    return json.datos;
   }
-  if (!json.ok) throw new ErrorApi(json.error || 'error', json.mensaje || 'Error desconocido');
-  return json.datos;
 }
 
 export async function ping() { return enviar({ accion: 'ping' }); }

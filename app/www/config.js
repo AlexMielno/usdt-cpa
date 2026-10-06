@@ -34,5 +34,5 @@ window.CONFIG_USDT = {
   ACTUALIZACIONES: { propietario: 'AlexMielno', repositorio: 'usdt-cpa' },
 
   // Versión de esta compilación (la actualiza herramientas/nueva_version.js)
-  VERSION: '1.6.0',
+  VERSION: '1.6.1',
 };

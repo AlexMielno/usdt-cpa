@@ -28,3 +28,7 @@ app/pruebas/.electron-real/
 herramientas/fixtures/bancos_muestra.json
 app/pruebas/capturas/2[5-8]-diferencial*.png
 app/pruebas/capturas/USDT-diferencial-*.pdf
+
+# Ejecutables de la última versión que se dejan en la raíz para el usuario (no se versionan)
+/*.exe
+/*.apk

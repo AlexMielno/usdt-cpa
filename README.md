@@ -228,6 +228,8 @@ git init; git add .; git commit -m "USDT CPA"          # solo la primera vez
 gh repo create usdt-cpa --public --source . --push     # solo la primera vez (crea AlexMielno/usdt-cpa)
 # secretos para firmar el APK en la nube (una vez): ANDROID_KEYSTORE_B64, ANDROID_KEYSTORE_PASS, ANDROID_KEY_ALIAS, ANDROID_KEY_PASS
 node herramientas/nueva_version.js 1.2.0               # sube la versión en package.json, config.js y Android
+# cuando GitHub termine de publicar: deja el instalador, el portable y el APK de esa versión en la raíz del repo
+node herramientas/descargar_release.js
 git commit -am "v1.2.0"; git tag v1.2.0; git push; git push --tags
 ```
 

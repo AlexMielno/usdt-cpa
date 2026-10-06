@@ -68,7 +68,8 @@ async function crearVentana() {
 // ---- IPC: canal HTTP (sin CORS) ----
 ipcMain.handle('usdt:http', async (_ev, { url, metodo, cabeceras, cuerpo }) => {
   if (!/^https:\/\//.test(url) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url)) throw new Error('Solo se permiten URLs https');
-  const r = await net.fetch(url, { method: metodo || 'GET', headers: cabeceras || {}, body: cuerpo, redirect: 'follow' });
+  // sin caché: la respuesta de Apps Script llega vía una redirección de un solo uso que no debe reutilizarse
+  const r = await net.fetch(url, { method: metodo || 'GET', headers: cabeceras || {}, body: cuerpo, redirect: 'follow', cache: 'no-store' });
   return { status: r.status, texto: await r.text() };
 });
 
