@@ -68,3 +68,7 @@ export const borrar = (id) => llamar('borrar', { id });
 export const actualizar = (id, cambios) => llamar('actualizar', Object.assign({ id }, cambios));
 export const editar = (id, cambios) => llamar('editar', Object.assign({ id }, cambios));
 export const resumen = () => llamar('resumen');
+// Diferencial desde bancos (libro "ADM.-002 BANCOS CPA"); fechas 'YYYY-MM-DD' o '' = sin límite
+export const bancos = (desde, hasta) => llamar('bancos', { desde: desde || '', hasta: hasta || '' });
+export const bancosDecisiones = () => llamar('bancosDecisiones');
+export const bancosGuardar = (decisiones, borrar) => llamar('bancosGuardar', { decisiones: decisiones || [], borrar: borrar || [] });

@@ -94,3 +94,66 @@ export async function editarOperacion(id, cambios) {
   await almacen.guardar('operaciones', { datos: estado.operaciones, hora: estado.operacionesHora });
   emitir('operaciones', estado.operaciones);
 }
+
+// ---------------------------------------------------------------------------------------
+// Diferencial desde bancos (v1.6)
+// ---------------------------------------------------------------------------------------
+const MIN_BANCOS = 10 * 60000;
+const MAX_CACHE_BANCOS = 1500000;   // caracteres JSON: más que eso no se guarda (localStorage es compartido con el resto)
+let pedidoBancos = 0;
+
+/** Copia local cifrada de la última lectura del libro de bancos y de las decisiones, para abrir la pantalla al instante. */
+export async function restaurarBancosLocal() {
+  if (!estado.bancos) {
+    const c = await almacen.leer('bancos');
+    if (c && c.datos) { estado.bancos = c.datos; estado.bancosHora = c.hora || 0; estado.bancosRango = { desde: c.desde || '', hasta: c.hasta || '' }; }
+  }
+  if (!estado.decisionesBancos.length) {
+    const d = await almacen.leer('decisionesBancos');
+    if (Array.isArray(d)) estado.decisionesBancos = d;
+  }
+  return estado.bancos;
+}
+
+/** Lee el libro de bancos. Usa la copia en memoria si es del mismo rango y tiene menos de 10 min (salvo forzar). */
+export async function cargarBancos(desde, hasta, forzar) {
+  desde = desde || ''; hasta = hasta || '';
+  const r = estado.bancosRango || {};
+  if (!forzar && estado.bancos && r.desde === desde && r.hasta === hasta && Date.now() - estado.bancosHora < MIN_BANCOS) return estado.bancos;
+  const n = ++pedidoBancos;
+  const datos = await api.bancos(desde, hasta);
+  if (n !== pedidoBancos) return datos;   // llegó tarde: manda la lectura más reciente
+  estado.bancos = datos; estado.bancosHora = Date.now(); estado.bancosRango = { desde, hasta };
+  try {
+    if (JSON.stringify(datos).length <= MAX_CACHE_BANCOS) await almacen.guardar('bancos', { datos, hora: estado.bancosHora, desde, hasta });
+    else almacen.eliminar('bancos');
+  } catch (e) { almacen.eliminar('bancos'); }   // la copia local es opcional (p. ej. almacenamiento lleno)
+  emitir('bancos', datos);
+  return datos;
+}
+
+export async function cargarDecisionesBancos() {
+  const r = await api.bancosDecisiones();
+  estado.decisionesBancos = (r && r.decisiones) || [];
+  try { await almacen.guardar('decisionesBancos', estado.decisionesBancos); } catch (e) { /* copia opcional */ }
+  emitir('decisionesBancos', estado.decisionesBancos);
+  return estado.decisionesBancos;
+}
+
+/** Envía las decisiones cambiadas (upsert por clave) y las claves a borrar, en lotes de 500. Actualiza estado.decisionesBancos. */
+export async function guardarDecisionesBancos(cambiadas, borrar) {
+  cambiadas = cambiadas || []; borrar = borrar || [];
+  const LOTE = 500;
+  let guardadas = 0, borradas = 0;
+  for (let i = 0; i === 0 || i < cambiadas.length; i += LOTE) {
+    const r = await api.bancosGuardar(cambiadas.slice(i, i + LOTE), i === 0 ? borrar : []);
+    guardadas += (r && r.guardadas) || 0; borradas += (r && r.borradas) || 0;
+  }
+  const ahora = new Date().toISOString(), dispositivo = almacen.obtenerMeta().dispositivo || '';
+  const fuera = new Set(borrar.concat(cambiadas.map(d => d.clave)));
+  estado.decisionesBancos = estado.decisionesBancos.filter(d => !fuera.has(d.clave))
+    .concat(cambiadas.map(d => Object.assign({ actualizado: ahora, dispositivo }, d)));
+  try { await almacen.guardar('decisionesBancos', estado.decisionesBancos); } catch (e) { /* copia opcional */ }
+  emitir('decisionesBancos', estado.decisionesBancos);
+  return { guardadas, borradas };
+}

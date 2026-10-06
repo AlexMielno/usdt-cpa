@@ -181,6 +181,29 @@ Alternativa sin instalar nada: subir el repositorio a GitHub; el workflow `compi
   día de cada operación** (columna TASA BCV de la fila). Así la devaluación no distorsiona las comparaciones entre meses.
   El valor en bolívares sigue disponible debajo o en columnas secundarias.
 
+## 4.2 Diferencial desde bancos (desde v1.6)
+
+Reporte **nuevo e independiente** (Reportes ▸ *Diferencial desde bancos →*) que calcula el diferencial cambiario real a
+partir del libro contable de bancos **"ADM.-002 BANCOS CPA"** (`CONFIG.BANCOS.LIBRO_ID`, se puede cambiar con la propiedad
+del script `BANCOS_LIBRO_ID`). La información sale SIEMPRE de las hojas de banco (MERCANTIL, BBVA, BANESCO, VENEZUELA…),
+de las hojas de activo en divisas (BINANCE y Efectivo $) y de la pestaña TASA; nunca de "R. Partidas" (que se llena a mano).
+
+- **Cómo lo reconstruye:** cada compra/venta aparece en el banco como una línea principal (partida BINANCE, EFECTIVO DOLARES,
+  COSTO DE MATERIA PRIMA, CUENTAS POR COBRAR…) más una línea con partida DIFERENCIAL CAMBIARIO. La app empareja ambas (por
+  número de referencia o por vecindad de filas) y, en USDT y Efectivo $, las cruza además con la hoja de activo. Con eso
+  obtiene total en Bs, tasa pactada, tasa BCV del día y diferencial (positivo a favor de la empresa, igual que en el resto
+  de la app). Los pagos y cobranzas hechos a tasa BCV no tienen línea de diferencial y no entran en el cálculo.
+- **Categorías:** USDT (Binance), Efectivo $, Materia prima y clientes, Otros pagos. Reportes por separado o **Todas** (conjunto
+  con resumen por categoría y por mes). En materia prima se muestra además cuántos pagos hubo en el mes y cuántos tuvieron diferencial.
+- **Conciliar:** tabla editable con la sugerencia automática y su confianza (alta/media/baja/sin pareja). ✓ aprueba; se puede
+  cambiar tipo, categoría, banco, líneas bancarias (selector), total Bs, tasa o nota. Las decisiones se guardan en la pestaña
+  **DIF_BANCOS** del libro de la app (se crea sola) y valen para todos los dispositivos. Las filas sin contrapartida en Bs
+  (pagos en USDT contra activos fijos, socios…) quedan excluidas por defecto.
+- **Backend:** acciones `bancos` (lectura), `bancosDecisiones` y `bancosGuardar` en `backend/Bancos.js`. Prueba local:
+  `node herramientas/simulador_backend.js` + `node herramientas/prueba_bancos.js` (usa la muestra real
+  `herramientas/fixtures/bancos_muestra.json`); lógica pura en `app/src/conciliacion.js` con `npm run probar:conciliacion`.
+  Especificación completa: `herramientas/fixtures/ESPEC_DIFERENCIAL_BANCOS.md`.
+
 ## 5. Flujo de versiones (actualizaciones automáticas)
 
 Las versiones se publican en **GitHub Releases** del repositorio configurado en `app/www/config.js`

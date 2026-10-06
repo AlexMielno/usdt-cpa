@@ -1,10 +1,11 @@
 /** Reportes por rango de fechas con exportación a PDF. */
 import { el, montar, toast, icono, cargando, ayuda } from '../ui.js';
 import { cabecera, conNavegacion } from './cascaron.js';
-import { estado, en } from '../estado.js';
+import { estado, en, navegar } from '../estado.js';
 import * as datos from '../datos.js';
 import { reporteUtilidades, reporteDiferenciales, reporteOperaciones, rangoPredefinido } from '../reportes.js';
 import { exportarPdf } from '../pdf.js';
+import { vistaReporte } from './vista_reporte.js';
 
 const TIPOS = [['utilidades', 'Utilidades'], ['diferenciales', 'Diferenciales'], ['compras', 'Compras'], ['ventas', 'Ventas'], ['pagos', 'Pagos']];
 const RANGOS = [['mes', 'Este mes'], ['mes_anterior', 'Mes anterior'], ['30', '30 días'], ['trimestre', 'Trimestre'], ['anio', 'Este año'], ['todo', 'Todo']];
@@ -46,28 +47,18 @@ export function pantallaReportes({ manejarError }) {
 
   const pintar = () => {
     if (!estado.operaciones.length) { zona.replaceChildren(el('div.vacio', {}, 'No hay operaciones registradas todavía.')); return; }
-    const rep = generar();
-    const tablas = rep.secciones.filter(s => s.filas.length).map(sec => el('div.tarjeta', {},
-      el('h2', {}, sec.titulo),
-      el('div', { estilo: { overflowX: 'auto' } }, el('table.tabla.reporte', {},
-        el('thead', {}, el('tr', {}, sec.columnas.map((c, i) => el('th', { clase: (sec.alinear || []).includes(i) ? 'izq' : '' }, c)))),
-        el('tbody', {}, sec.filas.map(f => el('tr', {}, f.map((v, i) => el('td', { clase: ((sec.alinear || []).includes(i) ? 'izq ' : '') + colorValor(v) }, v)))),
-          sec.totales ? el('tr.total', {}, sec.totales.map((v, i) => el('td', { clase: ((sec.alinear || []).includes(i) ? 'izq ' : '') + colorValor(v) }, v))) : null),
-      ))));
-    zona.replaceChildren(
-      el('div.tarjeta.resaltada', {},
-        el('h2', {}, el('span', {}, rep.titulo), el('span.accion.mini', {}, rep.subtitulo)),
-        el('div.grid-2', {}, rep.kpis.map(k => el('div.dato', {}, el('div.etq', {}, k.etq), el('div.val.peq', { clase: k.clase || '' }, k.val), k.sub ? el('div.nota', {}, k.sub) : null))),
-        el('div', { estilo: { marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' } }, btnPdf, ayuda('exportar')),
-      ),
-      tablas.length ? tablas : el('div.vacio', {}, 'Sin operaciones en este período.'),
-      rep.nota ? el('p.mini', {}, rep.nota) : null,
-    );
+    zona.replaceChildren(...vistaReporte(generar(), [btnPdf, ayuda('exportar')]));
   };
+
+  // Reporte independiente que se arma desde el libro de bancos (v1.6)
+  const entradaBancos = el('div.entrada-bancos', {},
+    el('button.btn.secundario', { type: 'button', onClick: () => navegar('diferencial') }, icono('reporte'), 'Diferencial desde bancos →'),
+    ayuda('diferencialBancos'));
 
   const contenido = el('div.pantalla', {},
     cabecera('Reportes', 'Para la gerencia · exportables a PDF'),
     el('div.selector-titulo', {}, 'Tipo de reporte', ayuda('tiposReporte')), selTipo,
+    entradaBancos,
     carteras.length > 1 ? el('div.selector-titulo', {}, 'Cartera', ayuda('carteraReporte')) : null, carteras.length > 1 ? chipsCartera : null,
     el('div.selector-titulo', {}, 'Período', ayuda('rango')), chipsRango,
     el('div.fila', { estilo: { marginBottom: '12px' } }, el('div.campo', { estilo: { marginBottom: 0 } }, el('label', {}, 'Desde'), iDesde), el('div.campo', { estilo: { marginBottom: 0 } }, el('label', {}, 'Hasta'), iHasta)),
@@ -78,11 +69,4 @@ export function pantallaReportes({ manejarError }) {
   pintar();
   datos.cargarOperaciones(false).then(pintar).catch(manejarError);
   const quitar = en('operaciones', () => { if (document.body.contains(contenido)) pintar(); else quitar(); });
-}
-
-function colorValor(v) {
-  const t = String(v || '');
-  if (/^\+/.test(t)) return 'positivo';
-  if (/^-(\$|[\d.,])/.test(t)) return 'negativo';
-  return '';
 }

@@ -9,6 +9,7 @@
  *   Seguridad.js   -> clave de enlace, Cloudflare Turnstile, tokens de sesión, anti fuerza bruta
  *   Tasas.js       -> tasa BCV y Binance P2P (lectura en vivo + captura periódica en la pestaña TASAS)
  *   Operaciones.js -> registrar / listar / anular operaciones y resumen de cartera (pestaña BD_USDT)
+ *   Bancos.js      -> lectura del libro de bancos (ADM.-002) y decisiones del reporte "Diferencial desde bancos" (pestaña DIF_BANCOS)
  *   Api.js         -> punto de entrada doPost / doGet y enrutador de acciones
  *
  * Los secretos NUNCA van en el código: se guardan en "Propiedades del script"
@@ -27,6 +28,17 @@ const CONFIG = {
   MINUTOS_CAPTURA: 30,           // cada cuánto se guarda una fila en TASAS
   ANUNCIOS_P2P: 20,              // anuncios por lado que se devuelven a la app
   FILTRO_P2P: { ordenesMes: 50, tasaFinalizacion: 0.95 }, // filtro de anunciantes "serios"
+  // Reporte "Diferencial desde bancos" (v1.6): se lee OTRO libro de Sheets, el de contabilidad bancaria
+  BANCOS: {
+    LIBRO_ID: '1uCJ0GZ97pm1lVzGXYTmHEet07Woa3IAe18qTAOoem54', // "ADM.-002 BANCOS CPA"; la propiedad del script BANCOS_LIBRO_ID lo sobreescribe
+    // Cuentas de ACTIVO en $ (tasa 1) que anclan una categoría: BINANCE -> usdt, Efectivo $ -> efectivo.
+    // Se usan las que existan. La primera es la de USDT (HOJA_USDT es su alias).
+    HOJAS_ACTIVO: ['BINANCE', 'Efectivo $'],
+    HOJA_USDT: 'BINANCE',          // si no existe: primera pestaña cuyo nombre contenga BINANCE o USDT
+    HOJA_TASA: 'TASA',             // BCV por día: FECHA | TASA BCV | Observacion
+    HOJA_DECISIONES: 'DIF_BANCOS', // pestaña NUEVA en el libro de la app (BD_USDT); se crea sola al guardar
+    MARGEN_DIAS: 7,                // margen alrededor del rango pedido para movimientos y tasas
+  },
 };
 
 // Nombres de las columnas de BD_USDT en el orden exacto de la hoja (27 columnas, A..AA)
@@ -119,6 +131,25 @@ function hoja_(nombre) {
   const h = libro_().getSheetByName(nombre);
   if (!h) throw new ErrorApi('hoja_no_existe', 'No existe la pestaña ' + nombre);
   return h;
+}
+
+/** ID del libro de bancos: la propiedad del script BANCOS_LIBRO_ID (si existe) manda sobre CONFIG.BANCOS.LIBRO_ID. */
+function idLibroBancos_() {
+  const prop = PropertiesService.getScriptProperties().getProperty('BANCOS_LIBRO_ID');
+  return texto_(prop, 100) || CONFIG.BANCOS.LIBRO_ID;
+}
+
+/**
+ * Abre el libro de contabilidad bancaria (otro archivo de Sheets). La cuenta que ejecuta la app web
+ * debe tener acceso a ese libro; si no, se devuelve el error controlado "bancos_sin_acceso".
+ */
+function libroBancos_() {
+  const id = idLibroBancos_();
+  try {
+    return SpreadsheetApp.openById(id);
+  } catch (err) {
+    throw new ErrorApi('bancos_sin_acceso', 'No se pudo abrir el libro de bancos (' + id + '). La cuenta que ejecuta el backend necesita acceso de lectura a ese libro. Detalle: ' + (err && err.message ? err.message : err));
+  }
 }
 
 /** Error controlado que se devuelve a la app con un código corto. */

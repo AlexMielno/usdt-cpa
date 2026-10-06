@@ -122,6 +122,32 @@ export const AYUDAS = {
     texto: 'Una empresa o AMBAS consolidadas. En AMBAS el detalle indica la cartera de cada operación.',
     ejemplos: [],
   },
+  // ---------- diferencial desde bancos ----------
+  diferencialBancos: {
+    titulo: 'Diferencial desde bancos',
+    texto: 'Calcula el diferencial cambiario real a partir de la contabilidad del libro de bancos (ADM.-002 BANCOS CPA), sin depender de lo registrado en la app. Cada movimiento de las hojas BINANCE y Efectivo $ se cruza con las líneas del banco por donde se pagó o se cobró (partidas BINANCE, EFECTIVO DOLARES y DIFERENCIAL CAMBIARIO); las demás líneas de diferencial (proveedores, clientes, otros pagos) se suman aparte. Así se obtiene el total en bolívares, la tasa pactada y la diferencia contra el BCV del día. Positivo = a favor de la empresa.',
+    ejemplos: ['Compra del 03/01/2026: 2.591,55 USDT pagados con 1.523.350 Bs en Mercantil → tasa pactada 587,81 contra BCV 301,37 → diferencial −742.334,58 Bs (−$ 2.463,20).', 'Cierre del mes: Mes anterior → revisa las filas en ámbar → ✓ en las correctas → Guardar → Reporte → Exportar a PDF.'],
+  },
+  categoriasDiferencial: {
+    titulo: 'Categorías del diferencial',
+    texto: 'El diferencial del libro de bancos se separa en cuatro grupos según la contrapartida. USDT (Binance): compras y ventas de USDT, cruzadas con la hoja BINANCE. Efectivo $: compra y venta de dólares en efectivo a empleados o terceros, cruzadas con la hoja Efectivo $. Materia prima y clientes: pagos a proveedores y cobros de clientes hechos a tasa pactada (la línea de DIFERENCIAL CAMBIARIO junto a la factura). Otros pagos: sueldos, viáticos, reparaciones, activos y todo lo demás. Los chips filtran la tabla y eligen el reporte; "Todas" los presenta juntos. Si una fila quedó en el grupo equivocado, cámbiala en la columna Categoría.',
+    ejemplos: ['"COMPRA $ 200" a un empleado en Mercantil con su línea de diferencial → Efectivo $.', '"VENPACK BOLSAS" en Venezuela con su línea de DIFERENCIAL CAMBIARIO → Materia prima y clientes (compra).', '"DAFU BEJUMA FACT" cobrada con diferencial → Materia prima y clientes (venta).', 'Un viático o un bono pagado con diferencial → Otros pagos.'],
+  },
+  emparejar: {
+    titulo: 'Emparejar con los bancos',
+    texto: 'Para cada fila de BINANCE o Efectivo $ la app busca, dentro de ±3 días, las líneas del banco del lado correcto (en una compra salen bolívares, en una venta entran): primero la línea con partida BINANCE o EFECTIVO DOLARES cuyo monto en $ coincide, y luego su línea de DIFERENCIAL CAMBIARIO (mismo número de referencia o fila vecina). La confianza dice qué tan segura es la pareja: alta (mismo día y con diferencial), media (falta el diferencial o la fecha difiere), baja (solo cuadra por monto). "Auto-emparejar" recalcula las sugerencias de las filas que aún no confirmaste; nunca toca las confirmadas.',
+    ejemplos: ['"2 líneas · alta": la línea BINANCE y la de diferencial de Mercantil, mismo día y mismo Nro → normalmente basta con pulsar ✓.', '"Sin pareja" o "Revisar · baja": pulsa «elegir…» y marca tú las líneas correctas, o cambia el banco para buscar en otro.'],
+  },
+  decisionFila: {
+    titulo: 'Revisar y confirmar una fila',
+    texto: '✓ aprueba la sugerencia tal como está. Cualquier cambio que hagas en la fila (tipo, categoría, líneas del banco, Total Bs, tasa pactada, tasa BCV o nota) también la aprueba si queda con los datos completos. Total Bs y tasa pactada van juntos: al cambiar uno se recalcula el otro. La tasa BCV en cursiva es la automática de la pestaña TASA; escribe otra si hace falta. Tipo EXCLUIR deja la fila fuera del reporte. Cambiar el banco busca de nuevo la pareja en ese banco y ↺ vuelve a la sugerencia automática. Nada se envía hasta pulsar «Guardar»; lo guardado queda en la pestaña DIF_BANCOS de la hoja de la app.',
+    ejemplos: ['Pago de 1.000 USDT a un proveedor sin movimiento en bolívares → Tipo PAGO y escribe en Total Bs el valor de la factura.', 'Salida de USDT por un préstamo a socios o la compra de un camión → Tipo EXCLUIR.', 'Colores: verde = confirmada, ámbar = por revisar, gris tachado = excluida; la raya amarilla a la izquierda = cambio sin guardar.'],
+  },
+  movimientosBancarios: {
+    titulo: 'Movimientos bancarios sin operación',
+    texto: 'Líneas de los bancos con partida BINANCE (o de efectivo) dentro del período que no quedaron unidas a ninguna fila de las hojas BINANCE o Efectivo $. Suelen ser operaciones que no se anotaron en esas hojas, montos distintos o fechas muy separadas. "Crear operación" agrega una fila manual con esa línea (el monto se estima en $ al BCV) para que no se pierda: corrige los USDT o dólares reales y guarda.',
+    ejemplos: ['Mercantil 15/05: salida de 1.200.000 Bs con partida BINANCE y nada en la hoja BINANCE ese día → Crear operación y escribe los USDT que llegaron.', 'Si la línea sí corresponde a una fila existente, ábrela con «elegir…» en esa fila y márcala allí.'],
+  },
   exportar: {
     titulo: 'Exportar a PDF',
     texto: 'Genera un PDF con membrete (logo, empresa, período, fecha), los indicadores y las tablas del reporte que estás viendo. En Windows abre "Guardar como" y luego el archivo; en Android abre Compartir (WhatsApp, correo, Drive…).',
@@ -151,7 +177,7 @@ export const AYUDAS = {
   pago: {
     titulo: 'Pago con Binance Pay',
     texto: 'Datos del tercero al que entregas los USDT. "Factura en Bs" es el valor que cancelas con esos USDT: al escribirlo la app calcula la tasa pactada (Bs ÷ USDT). La referencia es el número de orden de Binance Pay, útil para no registrar dos veces el mismo pago.',
-    ejemplos: ['Pago de 1.000 USDT por una factura de 1.000.000 Bs → tasa pactada 1.000,00.', 'Beneficiario "JUAN-25 · juandeoliveira05@gmail.com", referencia 455824235065761792.'],
+    ejemplos: ['Pago de 1.000 USDT por una factura de 1.000.000 Bs → tasa pactada 1.000,00.', 'Beneficiario "PROVEEDOR-25 · pagos@proveedor.com", referencia 455824235065761792.'],
   },
   tabla: {
     titulo: 'Modo tabulador',
@@ -172,7 +198,7 @@ export const AYUDAS = {
   nombreDispositivo: {
     titulo: 'Nombre del dispositivo',
     texto: 'Identifica desde dónde se registró cada operación.',
-    ejemplos: ['PC Oficina', 'Teléfono Juan'],
+    ejemplos: ['PC Oficina', 'Teléfono Caja'],
   },
   pin: {
     titulo: 'PIN',

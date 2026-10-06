@@ -23,3 +23,8 @@ Thumbs.db
 .DS_Store
 __pycache__/
 app/pruebas/.electron-real/
+
+# Muestra real del libro de bancos (datos contables y nombres: no se publica)
+herramientas/fixtures/bancos_muestra.json
+app/pruebas/capturas/2[5-8]-diferencial*.png
+app/pruebas/capturas/USDT-diferencial-*.pdf

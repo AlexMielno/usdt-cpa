@@ -29,6 +29,9 @@ export function aNumero(texto) {
     s = coma > punto ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
   } else if (coma > -1) {
     s = s.replace(',', '.');
+  } else if (/^-?\d{1,3}(\.\d{3}){2,}$/.test(s)) {
+    // solo puntos y varios grupos de tres cifras ("1.000.000"): son separadores de miles
+    s = s.replace(/\./g, '');
   }
   return parseFloat(s);
 }

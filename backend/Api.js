@@ -11,6 +11,10 @@
  *   { "accion": "editar",   "token": "...", "datos": { "id": "OP-000001", "observaciones": "..." } }
  *   { "accion": "resumen",  "token": "..." }
  *   { "accion": "historico","token": "...", "datos": { "n": 96 } }
+ *   Diferencial desde bancos (Bancos.js; lee el libro "ADM.-002 BANCOS CPA", no lo modifica):
+ *   { "accion": "bancos",           "token": "...", "datos": { "desde": "2026-01-01", "hasta": "2026-01-31" } }  (vacío = sin límite)
+ *   { "accion": "bancosDecisiones", "token": "..." }
+ *   { "accion": "bancosGuardar",    "token": "...", "datos": { "decisiones": [ {clave, fecha, tipo, categoria, ...} ], "borrar": ["clave"] } }
  *
  * Respuesta: { ok: true, datos: {...} }  ó  { ok: false, error: "codigo", mensaje: "..." }
  */
@@ -65,6 +69,9 @@ function ejecutar_(accion, datos, sesion) {
     case 'actualizar': return actualizarOperacion_(datos, sesion);
     case 'editar': return editarOperacion_(datos, sesion);
     case 'resumen': return resumenCartera_();
+    case 'bancos': return leerBancos_(datos);
+    case 'bancosDecisiones': return decisionesBancos_();
+    case 'bancosGuardar': return guardarDecisionesBancos_(datos, sesion);
     default: throw new ErrorApi('accion_desconocida', 'Acción no reconocida: ' + accion, 404);
   }
 }
@@ -74,7 +81,7 @@ function responder_(obj) {
 }
 
 // ---------------------------------------------------------------------------------------
-// Pruebas manuales desde el editor (Ejecutar > probarTasas / probarResumen)
+// Pruebas manuales desde el editor (Ejecutar > probarTasas / probarResumen / probarBancos)
 // ---------------------------------------------------------------------------------------
 function probarTasas() {
   const t = tasasEnVivo_(true);
@@ -84,4 +91,22 @@ function probarTasas() {
 
 function probarResumen() {
   Logger.log(JSON.stringify(resumenCartera_(), null, 2));
+}
+
+/** Lee el libro de bancos para el mes en curso y muestra conteos, ejemplos, avisos y el tiempo que tardó. */
+function probarBancos() {
+  const hasta = formatoFecha_(ahora_());
+  const desde = hasta.slice(0, 8) + '01';
+  const t0 = Date.now();
+  const r = leerBancos_({ desde: desde, hasta: hasta });
+  const porClase = {};
+  r.movimientos.forEach(m => { const k = m.banco + ' · ' + m.clase; porClase[k] = (porClase[k] || 0) + 1; });
+  const activos = {};
+  Object.keys(r.activos).forEach(h => { activos[h] = r.activos[h].length; });
+  Logger.log(JSON.stringify({
+    milisegundos: Date.now() - t0, libro: r.libro, desde: desde, hasta: hasta, hojaUsdt: r.hojaUsdt, hojasActivo: r.hojasActivo,
+    activos: activos, bancos: r.bancos, movimientosPorBancoYClase: porClase, tasas: Object.keys(r.tasas).length,
+    avisos: r.avisos.slice(0, 20), ejemploUsdt: r.usdt.slice(0, 3), ejemploMovimientos: r.movimientos.slice(0, 3),
+  }, null, 2));
+  Logger.log('Decisiones guardadas en ' + CONFIG.BANCOS.HOJA_DECISIONES + ': ' + decisionesBancos_().decisiones.length);
 }

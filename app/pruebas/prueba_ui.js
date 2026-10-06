@@ -85,7 +85,7 @@ async function main() {
   await clic('nav .principal'); await esperar(1200);
   await clicTexto('PAGO con USDT'); await esperar(200);
   await escribir('input[name=montoUsdt]', '1000');
-  await escribir('input[name=contraparte]', 'JUAN-25 · juandeoliveira05@gmail.com');
+  await escribir('input[name=contraparte]', 'PROVEEDOR-25 · pagos@proveedor.com');
   await escribir('input[name=referencia]', '455824235065761792');
   await escribir('input[name=facturaVes]', '1000000');
   await esperar(300); await foto('21-registro-pago');
@@ -137,6 +137,29 @@ async function main() {
   if (!tasaGuardada.includes('961,0000')) errores.push('La tasa editada no se conservó tras guardar: ' + tasaGuardada);
   console.log('tabla: filas ' + filasAntes + ' -> ' + filasDespues + ' · tasas ' + tasaGuardada);
   await foto('24-tabla-guardada');
+  // Diferencial desde bancos (v1.6): leer el libro, confirmar una fila, guardar, categorías, reporte y PDF
+  await clicTexto('Reportes'); await esperar(800);
+  await clicTexto('Diferencial desde bancos'); await esperar(300);
+  if (!await esperarHasta(() => js(`!document.body.innerText.includes('Leyendo')`), 60000)) errores.push('Diferencial: el libro de bancos no terminó de leerse');
+  await esperar(500); await foto('25-diferencial');
+  const filasDif = await js(`document.querySelectorAll('table.hoja tbody tr[data-clave]').length`);
+  if (!filasDif) errores.push('Diferencial: no se ve ninguna operación del libro de bancos');
+  await clicTexto('✓'); await esperar(400); await foto('26-diferencial-confirmada');
+  if (await js(`document.querySelectorAll('table.hoja tr.sucia').length`) < 1) errores.push('Diferencial: la fila confirmada no quedó marcada como cambio pendiente');
+  await clicTexto('Guardar');
+  if (!await esperarHasta(() => js(`document.body.innerText.includes('guardada')`), 20000)) errores.push('Diferencial: no se confirmó el guardado de la decisión');
+  await esperar(800);
+  if (await js(`document.querySelectorAll('table.hoja tr.sucia').length`) !== 0) errores.push('Diferencial: quedaron filas sin guardar tras Guardar');
+  await clicTexto('Efectivo $'); await esperar(400); await foto('28-diferencial-efectivo');
+  await clicTexto('Todas'); await esperar(400);
+  console.log('diferencial: ' + filasDif + ' filas · ' + await js(`(document.querySelector('.resumen-dif') || {}).innerText || ''`));
+  await clicTexto('Reporte'); await esperar(800); await foto('27-diferencial-reporte');
+  if (!/Diferencial cambiario/.test(await texto())) errores.push('Diferencial: no se pintó el reporte');
+  const pdfDif = () => fs.readdirSync(CAPTURAS).filter(f => /^USDT-diferencial-.*\.pdf$/.test(f));
+  pdfDif().forEach(f => fs.unlinkSync(path.join(CAPTURAS, f)));
+  await clicTexto('Exportar a PDF');
+  await esperarHasta(async () => pdfDif().length > 0, 20000); await esperar(500);
+  if (!pdfDif().length) errores.push('Diferencial: no se generó el PDF'); else console.log('PDF diferencial:', pdfDif()[0], fs.statSync(path.join(CAPTURAS, pdfDif()[0])).size, 'bytes');
   // Ayuda: burbuja al pasar el mouse y ventana al hacer clic
   await clicTexto('Inicio'); await esperar(800);
   await js(`(function(){const b=document.querySelector('.btn-ayuda'); b.dispatchEvent(new MouseEvent('mouseenter',{bubbles:true})); return true;})()`);
@@ -152,7 +175,7 @@ async function main() {
   await clicTexto('Reportes'); await esperar(1000); await foto('14-reportes');
   await clicTexto('Todo'); await esperar(400);
   await clicTexto('Exportar a PDF'); await esperarHasta(() => js(`document.body.innerText.includes('Guardado en')`), 20000); await esperar(300);
-  const pdfs = fs.readdirSync(CAPTURAS).filter(f => f.endsWith('.pdf'));
+  const pdfs = fs.readdirSync(CAPTURAS).filter(f => f.endsWith('.pdf') && !f.startsWith('USDT-diferencial-'));
   if (!pdfs.length || fs.statSync(path.join(CAPTURAS, pdfs[0])).size < 5000) errores.push('No se generó el PDF del reporte'); else console.log('PDF generado:', pdfs[0], fs.statSync(path.join(CAPTURAS, pdfs[0])).size, 'bytes');
   await clicTexto('Diferenciales'); await esperar(400); await foto('15-reportes-diferenciales');
   await clicTexto('Ventas'); await esperar(400);

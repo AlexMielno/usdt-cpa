@@ -7,6 +7,9 @@ export const estado = {
   resumen: null,
   errores: [],          // últimos errores de la app (para Ajustes ▸ Diagnóstico)
   pantalla: '',
+  // Diferencial desde bancos (v1.6): última lectura del libro de bancos y decisiones guardadas (pestaña DIF_BANCOS)
+  bancos: null, bancosHora: 0, bancosRango: null,   // bancosRango = { desde, hasta } de la lectura en memoria
+  decisionesBancos: [],
 };
 
 /** Guarda un error (máx. 30) para poder verlo y copiarlo desde Ajustes ▸ Diagnóstico. */
@@ -26,3 +29,11 @@ export function emitir(evento, datos) { (oyentes[evento] || []).forEach(f => { t
 let _navegar = () => {};
 export function definirNavegar(fn) { _navegar = fn; }
 export function navegar(pantalla, parametros) { _navegar(pantalla, parametros); }
+
+/**
+ * Guardia de salida: una pantalla con cambios sin guardar registra aquí una función async (destino) => boolean.
+ * navegar() (main.js) la toma antes de cambiar de pantalla: si devuelve false, se queda donde está.
+ */
+let _guardiaSalida = null;
+export function definirGuardiaSalida(fn) { _guardiaSalida = typeof fn === 'function' ? fn : null; }
+export function tomarGuardiaSalida() { const g = _guardiaSalida; _guardiaSalida = null; return g; }

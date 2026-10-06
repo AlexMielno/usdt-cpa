@@ -10,7 +10,7 @@ import { el, montar, toast } from './ui.js';
 import * as almacen from './almacen.js';
 import * as api from './api.js';
 import * as datos from './datos.js';
-import { definirNavegar } from './estado.js';
+import { definirNavegar, definirGuardiaSalida, tomarGuardiaSalida } from './estado.js';
 import { pantallaBienvenida } from './pantallas/bienvenida.js';
 import { pantallaBloqueo } from './pantallas/bloqueo.js';
 import { pantallaVerificacion } from './pantallas/verificacion.js';
@@ -20,6 +20,7 @@ import { pantallaHistorial } from './pantallas/historial.js';
 import { pantallaAjustes } from './pantallas/ajustes.js';
 import { pantallaReportes } from './pantallas/reportes.js';
 import { pantallaTabla } from './pantallas/tabla.js';
+import { pantallaDiferencial } from './pantallas/diferencial.js';
 import { comprobarActualizacion } from './actualizador.js';
 import { estado, emitir, registrarError } from './estado.js';
 
@@ -50,8 +51,20 @@ function irAVerificacion() {
   });
 }
 
+let consultandoGuardia = false;
+
 function navegar(nombre) {
   if (!almacen.estaDesbloqueado()) { pendiente = nombre; irABloqueo(); return; }
+  if (consultandoGuardia) return;            // ya se está preguntando si se puede salir
+  // Pantalla con cambios sin guardar (p. ej. Diferencial desde bancos): pregunta antes de salir
+  const guardia = tomarGuardiaSalida();
+  if (guardia) {
+    consultandoGuardia = true;
+    Promise.resolve().then(() => guardia(nombre))
+      .then(ok => { consultandoGuardia = false; if (ok) navegar(nombre); else definirGuardiaSalida(guardia); })
+      .catch(e => { consultandoGuardia = false; definirGuardiaSalida(guardia); manejarError(e); });
+    return;
+  }
   pantallaActual = nombre;
   estado.pantalla = nombre || 'inicio';
   const ctx = { manejarError, alDesvincular: irABienvenida, alBloquear: irABloqueo };
@@ -61,6 +74,7 @@ function navegar(nombre) {
     case 'ajustes': return pantallaAjustes(ctx);
     case 'reportes': return pantallaReportes(ctx);
     case 'tabla': return pantallaTabla(ctx);
+    case 'diferencial': return pantallaDiferencial(ctx);
     default: pantallaActual = 'inicio'; return pantallaInicio(ctx);
   }
 }

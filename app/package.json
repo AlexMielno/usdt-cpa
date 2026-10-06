@@ -1,7 +1,7 @@
 {
   "name": "usdt-cpa",
   "productName": "USDT CPA",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Control de compra y venta de USDT (Binance P2P) con tasa BCV - CPA Bejuma / Panamericana",
   "main": "electron/main.js",
   "private": true,
@@ -13,7 +13,8 @@
     "compilar:exe": "npm run construir:web && electron-builder --win --x64 --publish never",
     "android:sincronizar": "npm run construir:web && cap sync android",
     "android:iconos": "capacitor-assets generate --android --iconBackgroundColor #0b0e11 --iconBackgroundColorDark #0b0e11 --splashBackgroundColor #0b0e11 --splashBackgroundColorDark #0b0e11",
-    "compilar:apk": "npm run android:sincronizar && cd android && gradlew.bat assembleRelease"
+    "compilar:apk": "npm run android:sincronizar && cd android && gradlew.bat assembleRelease",
+    "probar:conciliacion": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON pruebas/prueba_conciliacion.js"
   },
   "build": {
     "appId": "ve.cpabejuma.usdt",
