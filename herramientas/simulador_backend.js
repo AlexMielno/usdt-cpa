@@ -116,7 +116,7 @@ const bytes = s => (typeof s === 'string' ? [...Buffer.from(s, 'utf8')] : s);
 const servicios = {
   SpreadsheetApp: { getActiveSpreadsheet: () => libroApp, openById: id => abrirLibroBancos(id), flush() {} },
   PropertiesService: { getScriptProperties: () => ({ getProperty: k => propiedades[k] === undefined ? null : propiedades[k], setProperty: (k, v) => { propiedades[k] = v; }, deleteProperty: k => { delete propiedades[k]; } }) },
-  CacheService: { getScriptCache: () => ({ get: k => (cache[k] && cache[k].exp > Date.now()) ? cache[k].v : null, put: (k, v, s) => { cache[k] = { v, exp: Date.now() + (s || 600) * 1000 }; } }) },
+  CacheService: { getScriptCache: () => ({ get: k => (cache[k] && cache[k].exp > Date.now()) ? cache[k].v : null, put: (k, v, s) => { cache[k] = { v, exp: Date.now() + (s || 600) * 1000 }; }, putAll: (obj, s) => { Object.keys(obj).forEach(k => { cache[k] = { v: obj[k], exp: Date.now() + (s || 600) * 1000 }; }); }, remove: k => { delete cache[k]; } }) },
   LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
   ScriptApp: { getProjectTriggers: () => [], newTrigger: () => ({ timeBased: () => ({ everyMinutes: () => ({ create() {} }) }) }) },
   Session: { getScriptTimeZone: () => ZONA },

@@ -50,8 +50,57 @@ const COLUMNAS_LEIDAS_BANCOS = 20;   // A..T: una sola lectura por pestaña
  *  - resumenPartidas: { 'YYYY-MM': { materiaCompras: { n, bs, usd }, cobranzas: { n, bs, usd } } } de todas las
  *    hojas de banco, solo con líneas dentro del rango pedido (sin margen). Contexto para el reporte de materia prima.
  */
+/**
+ * Acción `bancos` con caché del servidor: el mismo rango se sirve desde CacheService durante CACHE_BANCOS_SEG
+ * segundos (troceado en claves de 90 KB) salvo que la app pida `forzar` (botón "Leer bancos"). La respuesta
+ * lleva `tiempos` (ms por fase) y `cache: true|false` para poder medir.
+ */
 function leerBancos_(datos) {
   const d = datos || {};
+  const t0 = Date.now();
+  const clave = 'bancos|' + texto_(d.desde, 10) + '|' + texto_(d.hasta, 10);
+  if (!d.forzar) {
+    const guardado = cacheLeerTrozos_(clave);
+    if (guardado) { guardado.cache = true; guardado.tiempos = { total: Date.now() - t0, origen: 'cache' }; return guardado; }
+  }
+  const r = leerBancosDelLibro_(d);
+  r.cache = false;
+  r.tiempos.total = Date.now() - t0;
+  cacheGuardarTrozos_(clave, r, CACHE_BANCOS_SEG);
+  return r;
+}
+
+const CACHE_BANCOS_SEG = 600;
+const CACHE_TROZO = 90000;   // CacheService admite 100 KB por clave
+
+function cacheLeerTrozos_(clave) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const n = parseInt(cache.get(clave + '|n'), 10);
+    if (!(n > 0)) return null;
+    let texto = '';
+    for (let i = 0; i < n; i++) { const t = cache.get(clave + '|' + i); if (t === null || t === undefined) return null; texto += t; }
+    return JSON.parse(texto);
+  } catch (e) { return null; }
+}
+
+function cacheGuardarTrozos_(clave, obj, seg) {
+  try {
+    const texto = JSON.stringify(obj);
+    const cache = CacheService.getScriptCache();
+    const trozos = {};
+    let n = 0;
+    for (let i = 0; i < texto.length; i += CACHE_TROZO) trozos[clave + '|' + (n++)] = texto.slice(i, i + CACHE_TROZO);
+    if (n > 40) return;   // más de ~3,6 MB: no cabe razonablemente en la caché
+    trozos[clave + '|n'] = String(n);
+    cache.putAll(trozos, seg);
+  } catch (e) { /* la caché es opcional */ }
+}
+
+function leerBancosDelLibro_(datos) {
+  const d = datos || {};
+  const tiempos = {};
+  const marca = (k, t) => { tiempos[k] = Date.now() - t; };
   const desde = fechaPeticionBancos_(d.desde, 'desde');
   const hasta = fechaPeticionBancos_(d.hasta, 'hasta');
   if (desde && hasta && desde > hasta) throw new ErrorApi('dato_invalido', 'La fecha "desde" es posterior a "hasta".');
@@ -60,8 +109,10 @@ function leerBancos_(datos) {
   const desdeMargen = desde ? sumarDiasIso_(desde, -margen) : '';
   const hastaMargen = hasta ? sumarDiasIso_(hasta, margen) : '';
 
+  let t = Date.now();
   const libro = libroBancos_();   // lanza bancos_sin_acceso si no se puede abrir
   const hojas = libro.getSheets();
+  marca('abrirLibro', t); t = Date.now();
   const nombresActivo = (cfg.HOJAS_ACTIVO && cfg.HOJAS_ACTIVO.length) ? cfg.HOJAS_ACTIVO : [cfg.HOJA_USDT];
   const hojaUsdt = hojaUsdtBancos_(libro, hojas, nombresActivo[0]);
   if (!hojaUsdt) throw new ErrorApi('bancos_sin_hoja_usdt', 'El libro de bancos no tiene la pestaña ' + nombresActivo[0] + ' (ni otra cuyo nombre contenga BINANCE o USDT).');
@@ -84,6 +135,7 @@ function leerBancos_(datos) {
   });
   const activos = {};
   hojasActivo.forEach(h => { activos[h.getName()] = leerHojaActivoBancos_(h, desde, hasta, lector, avisar); });
+  marca('activos', t); t = Date.now();
 
   // Bancos: toda pestaña con la cabecera de banco salvo la de USDT y TASA. "Efectivo $" es activo Y banco a la
   // vez: sus líneas contra partida BINANCE son la contraparte de las ventas de USDT por efectivo.
@@ -99,8 +151,11 @@ function leerBancos_(datos) {
     if (normalizarCabecera_(nombre) === tasaNormalizada) { hojaTasa = h; return; }
     if (!esHojaBanco_(h)) return;
     bancos.push(nombre);
+    const th = Date.now();
     leerHojaBanco_(h, desdeMargen, hastaMargen, lector, avisar, resumen).forEach(m => movimientos.push(m));
+    marca('banco:' + nombre, th);
   });
+  marca('bancos', t); t = Date.now();
   const resumenPartidas = {};
   Object.keys(resumen.meses).sort().forEach(mes => {
     const m = resumen.meses[mes];
@@ -115,7 +170,9 @@ function leerBancos_(datos) {
   else avisar('No existe la pestaña ' + cfg.HOJA_TASA + ' en el libro de bancos: no hay tasas BCV del libro.');
 
   if (avisosOmitidos) avisos.push('… y ' + avisosOmitidos + ' avisos más.');
+  marca('tasas', t);
   return {
+    tiempos: tiempos,
     libro: { id: idLibroBancos_(), titulo: libro.getName(), leido: ahora_().toISOString() },
     desde: desde, hasta: hasta,
     hojaUsdt: nombreUsdt,
@@ -192,18 +249,59 @@ function esCabeceraBanco_(fila) {
     c(COL_BANCOS.DEBE).indexOf('DEBE') === 0 && c(COL_BANCOS.HABER).indexOf('HABER') === 0;
 }
 
-/** UNA lectura de toda la pestaña (A..T, o menos si la pestaña es más angosta). Fila 0 = cabecera. */
-function valoresHojaBancos_(hoja, columnas) {
+/**
+ * Lectura de una pestaña limitada al bloque de filas que interesa. Fila 0 = cabecera; la propiedad `base`
+ * del arreglo permite recuperar el número real de fila: fila = base + i.
+ *
+ * getLastRow() devuelve ~30.000 en estas hojas porque la columna SALDO tiene fórmulas hasta el final, así que
+ * leer A..T completo cuesta mucho. En su lugar: (1) se lee solo A..C (fecha, nro, descripción) para ubicar la
+ * última fila con datos y, si hay rango, la primera y la última fila cuya fecha cae dentro (con ±VECINDAD filas
+ * de holgura para las líneas vecinas); (2) se lee ese bloque con todas las columnas. Las fechas de texto que no
+ * se pueden interpretar se consideran "dentro" para no perder filas.
+ */
+function valoresHojaBancos_(hoja, columnas, desde, hasta, lector) {
   const filas = hoja.getLastRow();
   const cols = Math.min(columnas, hoja.getLastColumn());
   if (filas < 1 || cols < 1) return [];
-  return hoja.getRange(1, 1, filas, cols).getValues();
+  const cabecera = hoja.getRange(1, 1, 1, cols).getValues()[0];
+  if (filas < 2) { const solo = [cabecera]; solo.base = 0; return solo; }
+  const guia = hoja.getRange(2, 1, filas - 1, Math.min(3, cols)).getValues();
+  let ultima = 0;                       // última fila (índice en guia) con algo en A..C
+  let ini = -1, fin = -1;               // primera y última fila (índice en guia) dentro del rango
+  const tDesde = desde ? Date.UTC(+desde.slice(0, 4), +desde.slice(5, 7) - 1, +desde.slice(8, 10)) - 36 * 3600000 : -Infinity;
+  const tHasta = hasta ? Date.UTC(+hasta.slice(0, 4), +hasta.slice(5, 7) - 1, +hasta.slice(8, 10)) + 60 * 3600000 : Infinity;
+  const conRango = !!(desde || hasta);
+  for (let i = 0; i < guia.length; i++) {
+    const g = guia[i];
+    if (celdaVacia_(g[0]) && celdaVacia_(g[1]) && celdaVacia_(g[2])) continue;
+    ultima = i;
+    if (!conRango) continue;
+    const c = g[0];
+    let dentro;
+    if (c instanceof Date) { const t = c.getTime(); dentro = t >= tDesde && t <= tHasta; }
+    else if (typeof c === 'number') { const t = Date.UTC(1899, 11, 30) + c * 86400000; dentro = t >= tDesde && t <= tHasta; }
+    else if (celdaVacia_(c)) dentro = false;                  // sin fecha: entra solo si queda dentro del bloque
+    else {
+      const fe = fechaDesdeCelda_(c, '', lector || {});
+      dentro = fe.fecha ? (!desde || fe.fecha >= desde) && (!hasta || fe.fecha <= hasta) : true;
+    }
+    if (dentro) { if (ini === -1) ini = i; fin = i; }
+  }
+  if (!conRango) { ini = 0; fin = ultima; }
+  if (ini === -1) { const vacio = [cabecera]; vacio.base = 0; return vacio; }
+  ini = Math.max(0, ini - VECINDAD_FILAS_BANCOS);
+  fin = Math.min(ultima, fin + VECINDAD_FILAS_BANCOS);
+  const bloque = hoja.getRange(ini + 2, 1, fin - ini + 1, cols).getValues();
+  const v = [cabecera].concat(bloque);
+  v.base = ini + 1;                     // v[1] es la fila (ini + 2) de la hoja
+  return v;
 }
 
 /** Pestaña de activo en $ (BINANCE, Efectivo $): DEBE = entra (compra), HABER = sale (venta o pago). */
 function leerHojaActivoBancos_(hoja, desde, hasta, lector, avisar) {
   const nombre = hoja.getName();
-  const v = valoresHojaBancos_(hoja, COLUMNAS_LEIDAS_BANCOS);
+  const v = valoresHojaBancos_(hoja, COLUMNAS_LEIDAS_BANCOS, desde, hasta, lector);
+  const base = v.base || 0;
   const out = [];
   if (!v.length) return out;
   if (!esCabeceraBanco_(v[0])) avisar('La pestaña ' + nombre + ' no tiene la cabecera esperada (FECHA … Partida … DEBE, HABER); se leyó por posición de columna.');
@@ -219,7 +317,7 @@ function leerHojaActivoBancos_(hoja, desde, hasta, lector, avisar) {
       anio = fe.fecha.slice(0, 4);
       if (!enRangoIso_(fe.fecha, desde, hasta)) continue;
     }
-    const fila = i + 1;
+    const fila = base + i;
     if (fe.aviso) avisar(nombre + ' fila ' + fila + ': ' + fe.aviso);
     out.push({
       ref: nombre + '!' + fila,
@@ -251,7 +349,8 @@ function leerHojaActivoBancos_(hoja, desde, hasta, lector, avisar) {
  */
 function leerHojaBanco_(hoja, desde, hasta, lector, avisar, resumen) {
   const nombre = hoja.getName();
-  const v = valoresHojaBancos_(hoja, COLUMNAS_LEIDAS_BANCOS);
+  const v = valoresHojaBancos_(hoja, COLUMNAS_LEIDAS_BANCOS, desde, hasta, lector);
+  const base = v.base || 0;
   const n = v.length;
   const clases = new Array(n);   // clase de cada fila (undefined = no se envía)
   const nros = new Array(n);     // nroNorm de las filas con contenido (undefined = fila vacía)
@@ -311,7 +410,7 @@ function leerHojaBanco_(hoja, desde, hasta, lector, avisar, resumen) {
     if (!debeBs && !haberBs && !debeUsd && !haberUsd) continue;   // línea sin montos: no sirve para emparejar
     const fe = fechaFila(i);
     if (fe.fecha && !enRangoIso_(fe.fecha, desde, hasta)) continue;
-    const fila = i + 1;
+    const fila = base + i;
     if (fe.aviso) avisar(nombre + ' fila ' + fila + ': ' + fe.aviso);
     out.push({
       ref: nombre + '!' + fila,
@@ -364,7 +463,8 @@ function nroNormalizado_(v) {
 /** Pestaña TASA: A FECHA | B TASA BCV. No siempre ordenada; si una fecha se repite, gana la última fila. */
 function leerHojaTasaBancos_(hoja, desde, hasta, lector, avisar) {
   const nombre = hoja.getName();
-  const v = valoresHojaBancos_(hoja, 2);
+  const v = valoresHojaBancos_(hoja, 2, desde, hasta, lector);
+  const base = v.base || 0;
   const tasas = {};
   let anio = '';
   for (let i = 1; i < v.length; i++) {
@@ -374,10 +474,10 @@ function leerHojaTasaBancos_(hoja, desde, hasta, lector, avisar) {
     if (!(tasa > 0)) continue;
     lector.anioRespaldo = anio;
     const fe = fechaDesdeCelda_(f[0], '', lector);
-    if (!fe.fecha) { avisar(nombre + ' fila ' + (i + 1) + ': ' + fe.aviso + ' (tasa ' + tasa + ' ignorada)'); continue; }
+    if (!fe.fecha) { avisar(nombre + ' fila ' + (base + i) + ': ' + fe.aviso + ' (tasa ' + tasa + ' ignorada)'); continue; }
     anio = fe.fecha.slice(0, 4);
     if (!enRangoIso_(fe.fecha, desde, hasta)) continue;
-    if (fe.aviso) avisar(nombre + ' fila ' + (i + 1) + ': ' + fe.aviso);
+    if (fe.aviso) avisar(nombre + ' fila ' + (base + i) + ': ' + fe.aviso);
     tasas[fe.fecha] = redondear_(tasa, 4);
   }
   return tasas;

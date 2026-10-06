@@ -121,7 +121,7 @@ export async function cargarBancos(desde, hasta, forzar) {
   const r = estado.bancosRango || {};
   if (!forzar && estado.bancos && r.desde === desde && r.hasta === hasta && Date.now() - estado.bancosHora < MIN_BANCOS) return estado.bancos;
   const n = ++pedidoBancos;
-  const datos = await api.bancos(desde, hasta);
+  const datos = await api.bancos(desde, hasta, forzar);   // forzar = saltar también la caché del servidor
   if (n !== pedidoBancos) return datos;   // llegó tarde: manda la lectura más reciente
   estado.bancos = datos; estado.bancosHora = Date.now(); estado.bancosRango = { desde, hasta };
   try {

@@ -105,6 +105,14 @@ function poner(padre, ...hijos) { padre.replaceChildren(...hijos.flat(Infinity).
 const mostrar = (nodo, si) => { if (nodo) nodo.style.display = si ? '' : 'none'; };
 
 // ---------------------------------------------------------------------------------------
+/** « · en 12 s (caché)» con los tiempos que devuelve el backend, para saber cuánto tarda la lectura real. */
+function duracionLectura(resp) {
+  const t = resp && resp.tiempos;
+  if (!t || !(t.total >= 0)) return '';
+  const seg = t.total >= 1000 ? (t.total / 1000).toFixed(t.total >= 10000 ? 0 : 1) + ' s' : t.total + ' ms';
+  return ' · en ' + seg + (resp.cache ? ' (caché del servidor)' : '');
+}
+
 export function pantallaDiferencial({ manejarError }) {
   let resp = null, idx = new Map(), tasas = {}, bancos = [];
   let hojasActivo = [];
@@ -794,7 +802,7 @@ export function pantallaDiferencial({ manejarError }) {
     if (!resp) { poner(lectura); return; }
     const lib = resp.libro || {}, hojas = resp.hojasActivo || [resp.hojaUsdt || 'BINANCE'];
     const cuando = haceCuanto(lib.leido || (estado.bancosHora ? new Date(estado.bancosHora).toISOString() : ''));
-    poner(lectura, 'Libro «' + (lib.titulo || 'bancos') + '» · ' + hojas.join(' y ') + ' + ' + bancos.length + ' bancos · período ' + textoRango(rangoDatos()) + (cuando ? ' · leído ' + cuando : ''));
+    poner(lectura, 'Libro «' + (lib.titulo || 'bancos') + '» · ' + hojas.join(' y ') + ' + ' + bancos.length + ' bancos · período ' + textoRango(rangoDatos()) + (cuando ? ' · leído ' + cuando : '') + duracionLectura(resp));
   };
 
   const pintarAvisos = () => {
