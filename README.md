@@ -195,6 +195,10 @@ de las hojas de activo en divisas (BINANCE y Efectivo $) y de la pestaña TASA; 
   de la app). Los pagos y cobranzas hechos a tasa BCV no tienen línea de diferencial y no entran en el cálculo.
 - **Categorías:** USDT (Binance), Efectivo $, Materia prima y clientes, Otros pagos. Reportes por separado o **Todas** (conjunto
   con resumen por categoría y por mes). En materia prima se muestra además cuántos pagos hubo en el mes y cuántos tuvieron diferencial.
+- **Resultado % (desde v1.7):** cada operación muestra su diferencial como porcentaje sobre el valor al BCV (positivo = ganancia,
+  negativo = pérdida), y el reporte añade las secciones "Compras vs ventas" (tasa pactada y BCV promedio, brecha, resultado % y
+  peso de cada lado) y "Ventas frente a compras" (tasa de venta frente a la de compra, monto vendido respecto al comprado y qué
+  parte de lo cedido en compras se recupera en ventas); el reporte conjunto lo desglosa además por categoría.
 - **Conciliar:** tabla editable con la sugerencia automática y su confianza (alta/media/baja/sin pareja). ✓ aprueba; se puede
   cambiar tipo, categoría, banco, líneas bancarias (selector), total Bs, tasa o nota. Las decisiones se guardan en la pestaña
   **DIF_BANCOS** del libro de la app (se crea sola) y valen para todos los dispositivos. Las filas sin contrapartida en Bs

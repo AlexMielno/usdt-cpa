@@ -291,12 +291,16 @@ verificar('cada movimiento lo usa una sola operación (salvo dentro de un mismo 
     uso.set(r, g);
   }));
 });
-verificar('(d) reporte USDT: 3 secciones y totales coherentes (meses = detalle = KPI)', () => {
+verificar('(d) reporte USDT: 5 secciones y totales coherentes (meses = detalle = KPI)', () => {
   const rep = reporteDiferencialBancos(filas, '', '', { categoria: 'usdt', libro: resp.libro });
   assert.equal(rep.tipo, 'diferencial-usdt');
-  assert.deepEqual(rep.secciones.map(s => s.titulo), ['Resumen por mes', 'Detalle por operación', 'Por revisar (no incluidas)']);
-  assert.equal(rep.kpis.length, 6);
-  const [meses, detalle] = rep.secciones;
+  assert.deepEqual(rep.secciones.map(s => s.titulo), ['Resumen por mes', 'Compras vs ventas', 'Ventas frente a compras', 'Detalle por operación', 'Por revisar (no incluidas)']);
+  assert.equal(rep.kpis.length, 8);
+  const porTitulo = tt => rep.secciones.find(s => s.titulo === tt);
+  const meses = porTitulo('Resumen por mes'), detalle = porTitulo('Detalle por operación');
+  assert.ok(detalle.columnas[9] === 'Resultado %' && detalle.filas.every(f => / %/.test(f[9]) || f[9] === '—'), 'columna Resultado %');
+  const cvv = porTitulo('Compras vs ventas'); assert.equal(cvv.filas.length, 2); assert.ok(/ganancia|pérdida|—|%/.test(cvv.totales[8]));
+  assert.ok(rep.kpis.some(k => k.etq === 'Resultado neto %') && rep.kpis.some(k => k.etq === 'Compras vs ventas'));
   assert.equal(meses.totales[7], rep.kpis[0].val);
   assert.equal(detalle.totales[8], rep.kpis[0].val);
   const suma = meses.filas.reduce((s, f) => s + valorTexto(f[7]), 0);
@@ -305,11 +309,11 @@ verificar('(d) reporte USDT: 3 secciones y totales coherentes (meses = detalle =
   assert.ok(Math.abs(sumaDet - valorTexto(meses.totales[8])) <= 0.01 * detalle.filas.length, 'Bs ' + sumaDet + ' vs ' + meses.totales[8]);
   const inc = filas.filter(f => f.op.categoria === 'usdt' && (f.estado === 'CONFIRMADA' || f.estado === 'SUGERIDA'));
   assert.equal(detalle.filas.length, inc.length);
-  assert.equal(rep.secciones[2].filas.length, filas.filter(f => f.op.categoria === 'usdt' && f.estado === 'REVISAR').length);
+  assert.equal(porTitulo('Por revisar (no incluidas)').filas.length, filas.filter(f => f.op.categoria === 'usdt' && f.estado === 'REVISAR').length);
   const legado = reporteDiferencialBancos(filas, '', '', {});
-  assert.equal(legado.tipo, 'diferencial-bancos'); assert.equal(legado.secciones.length, 3);
+  assert.equal(legado.tipo, 'diferencial-bancos'); assert.equal(legado.secciones.length, 5);
   const solo = reporteDiferencialBancos(filas, '', '', { categoria: 'usdt', soloConfirmadas: true });
-  assert.equal(solo.secciones[1].filas.length, 0, 'sin confirmadas no hay detalle');
+  assert.equal(solo.secciones.find(s => s.titulo === 'Detalle por operación').filas.length, 0, 'sin confirmadas no hay detalle');
 });
 
 // §6.3 categorías
@@ -399,7 +403,7 @@ verificar('aBcv: compra sin línea de diferencial (17/08 «compra usdt para aire
   assert.equal(f.calculo.aBcv, true); assert.equal(f.calculo.difBs, 0); assert.equal(f.estado, 'REVISAR');
   assert.equal(compra0301.calculo.aBcv, false);
   const r = reporteDiferencialBancos(filas, '2026-08-01', '2026-08-31', { categoria: 'usdt' });
-  const fila = r.secciones[2].filas.find(x => x[0] === '17/08/2026');
+  const fila = r.secciones.find(s => s.titulo === 'Por revisar (no incluidas)').filas.find(x => x[0] === '17/08/2026');
   assert.ok(fila && fila[3].startsWith('Tasa pactada igual al BCV: revisar la línea de diferencial'), fila && fila[3]);
 });
 verificar('resumenPartidas: reporte materia y todas con «Pagos MP del mes (n)», «Con diferencial (n)» y KPI «Pagos a BCV»', () => {
@@ -416,27 +420,31 @@ verificar('resumenPartidas: reporte materia y todas con «Pagos MP del mes (n)»
   assert.equal(sec.totales.slice(-2).join('|'), totMp + '|' + conDif);
   assert.equal(k.val, Math.max(0, totMp - conDif) + ' de ' + totMp);
   const todasRp = reporteDiferencialBancos(filas, '', '', { categoria: 'todas', resumenPartidas: rp });
-  assert.deepEqual(todasRp.secciones[1].columnas.slice(-2), ['Pagos MP del mes (n)', 'Con diferencial (n)']);
+  const porMes = todasRp.secciones.find(s => /Resumen por mes/.test(s.titulo));
+  assert.deepEqual(porMes.columnas.slice(-2), ['Pagos MP del mes (n)', 'Con diferencial (n)']);
   assert.ok(todasRp.kpis.some(x => x.etq === 'Pagos a BCV'));
-  assert.equal(todasRp.secciones[1].totales[5], todasRp.kpis[0].val);
+  assert.equal(porMes.totales[5], todasRp.kpis[0].val);
+  const cat = todasRp.secciones.find(s => s.titulo === 'Compras vs ventas por categoría');
+  assert.ok(cat && cat.filas.length === 4 && cat.columnas.length === 9 && cat.totales.length === 9, 'comparación por categoría');
   const sinRp = reporteDiferencialBancos(filas, '', '', { categoria: 'materia' });
   assert.equal(sinRp.secciones[0].columnas.length, 9); assert.ok(!sinRp.kpis.some(x => x.etq === 'Pagos a BCV'));
   const usdtRp = reporteDiferencialBancos(filas, '', '', { categoria: 'usdt', resumenPartidas: rp });
   assert.equal(usdtRp.secciones[0].columnas.length, 9, 'solo materia y todas llevan las columnas de partidas');
 });
-verificar('§6.3 reporte «todas»: 4 secciones, KPI por categoría y totales coherentes', () => {
+verificar('§6.3 reporte «todas»: 7 secciones, KPI por categoría y totales coherentes', () => {
   const rep = reporteDiferencialBancos(filas, '', '', { categoria: 'todas', libro: resp.libro });
   assert.equal(rep.tipo, 'diferencial-todas');
-  assert.deepEqual(rep.secciones.map(s => s.titulo.split(' (')[0]), ['Resumen por categoría', 'Resumen por mes y categoría', 'Detalle por operación', 'Por revisar']);
-  assert.equal(rep.kpis.length, 6);
-  const [cat, mes] = rep.secciones;
+  assert.deepEqual(rep.secciones.map(s => s.titulo.split(' (')[0]), ['Resumen por categoría', 'Compras vs ventas por categoría', 'Compras vs ventas', 'Ventas frente a compras', 'Resumen por mes y categoría', 'Detalle por operación', 'Por revisar']);
+  assert.equal(rep.kpis.length, 8);
+  const cat = rep.secciones[0], mes = rep.secciones.find(s => /Resumen por mes/.test(s.titulo));
   assert.equal(cat.totales[4], rep.kpis[0].val); assert.equal(mes.totales[5], rep.kpis[0].val);
+  const kpiCat = rep.kpis.slice(3, 7);   // tras neto total, resultado neto % y compras vs ventas
   CATEGORIAS.forEach(([k], i) => {
     const r = reporteDiferencialBancos(filas, '', '', { categoria: k });
-    assert.equal(r.kpis[0].val, rep.kpis[i + 1].val, k);
-    assert.equal(cat.filas[i][4], rep.kpis[i + 1].val, k);
+    assert.equal(r.kpis[0].val, kpiCat[i].val, k);
+    assert.equal(cat.filas[i][4], kpiCat[i].val, k);
   });
-  const suma = CATEGORIAS.reduce((s, _, i) => s + valorTexto(rep.kpis[i + 1].val), 0);
+  const suma = CATEGORIAS.reduce((s, _, i) => s + valorTexto(kpiCat[i].val), 0);
   assert.ok(Math.abs(suma - valorTexto(rep.kpis[0].val)) <= 0.03, suma + ' vs ' + rep.kpis[0].val);
 });
 verificar('decisiones guardadas: conservan sus refs, nadie más las usa; clave antigua sin prefijo = BINANCE', () => {

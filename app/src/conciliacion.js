@@ -919,6 +919,60 @@ export function calcularFila(op, decision, tasas, movimientosPorRef) {
 
 const cl = v => (v > 0.004 ? 'positivo' : v < -0.004 ? 'negativo' : 'neutro');
 const pctTxt = (dif, base) => (base > 0 ? signo(dif / base * 100, 2) + ' %' : '—');
+/** Resultado del diferencial en % sobre el valor al BCV: "+35,10 % ganancia" / "-51,30 % pérdida" / "0,00 %" / "—". */
+const resultadoTxt = (difBs, baseBs) => { if (!(baseBs > 0)) return '—'; const p = difBs / baseBs * 100; return signo(p, 2) + ' %' + (p > 0.004 ? ' ganancia' : p < -0.004 ? ' pérdida' : ''); };
+/** Valor al BCV (en Bs) de un conjunto de operaciones: Σ monto × BCV del día. Es la base de los porcentajes. */
+const baseBsDe = xs => xs.reduce((s, x) => s + (x.usdt > 0 && x.tasaBcv > 0 ? x.usdt * x.tasaBcv : 0), 0);
+function statsLado(xs) {
+  const conMonto = xs.filter(x => x.usdt > 0 && x.tasaBcv > 0);
+  const mU = sumar(conMonto, 'usdt');
+  return {
+    n: xs.length, monto: sumar(xs, 'usdt'), bs: sumar(xs, 'totalBs'), dif: sumar(xs, 'difUsd'), difBs: sumar(xs, 'difBs'), baseBs: baseBsDe(xs),
+    tasaProm: mU > 0 ? sumar(conMonto, 'totalBs') / mU : 0,
+    bcvProm: mU > 0 ? conMonto.reduce((s, x) => s + x.usdt * x.tasaBcv, 0) / mU : 0,
+  };
+}
+/**
+ * Secciones "Compras vs ventas": una fila por lado y el total, con tasa pactada y BCV promedio, brecha de tasa,
+ * diferencial, resultado % sobre el valor al BCV y peso de cada lado en el monto; más una tabla de comparación
+ * directa de ventas frente a compras.
+ */
+function seccionesComprasVsVentas(inc, u) {
+  const c = statsLado(inc.filter(x => x.tipo === 'COMPRA')), v = statsLado(inc.filter(x => x.tipo !== 'COMPRA')), t = statsLado(inc);
+  const brecha = s => (s.tasaProm && s.bcvProm ? signo((s.tasaProm / s.bcvProm - 1) * 100, 2) + ' %' : '—');
+  const fila = (nombre, s) => [nombre, String(s.n), num(s.monto, 2), num(s.bs, 2), s.tasaProm ? num(s.tasaProm, 2) : '—', s.bcvProm ? num(s.bcvProm, 2) : '—', brecha(s), signoUsd(s.dif), resultadoTxt(s.difBs, s.baseBs), t.monto > 0 ? num(s.monto / t.monto * 100, 2) + ' %' : '—'];
+  const comparacion = [
+    ['Tasa pactada promedio: ventas frente a compras', c.tasaProm && v.tasaProm ? signo((v.tasaProm / c.tasaProm - 1) * 100, 2) + ' %' + (v.tasaProm > c.tasaProm ? ' (se vende más caro de lo que se compra)' : ' (se vende más barato de lo que se compra)') : '—'],
+    ['Monto vendido respecto al comprado', c.monto > 0 ? num(v.monto / c.monto * 100, 2) + ' %' : '—'],
+    ['Resultado de compras (sobre el valor al BCV)', resultadoTxt(c.difBs, c.baseBs)],
+    ['Resultado de ventas y pagos (sobre el valor al BCV)', resultadoTxt(v.difBs, v.baseBs)],
+    ['Diferencial de ventas frente al de compras', c.dif < 0 && v.dif > 0 ? num(v.dif / -c.dif * 100, 2) + ' % de lo cedido en compras se recupera en ventas' : c.dif < 0 && v.dif <= 0 ? 'las ventas no recuperan nada de lo cedido en compras' : c.dif >= 0 ? 'las compras no ceden diferencial' : '—'],
+    ['Resultado neto (sobre el valor al BCV de todo lo operado)', resultadoTxt(t.difBs, t.baseBs)],
+  ];
+  return [
+    { titulo: 'Compras vs ventas', columnas: ['Concepto', 'Operaciones', 'Monto ' + u, 'Bs', 'Tasa pactada prom.', 'BCV prom.', 'Brecha tasa %', 'Dif. $', 'Resultado %', 'Peso %'], alinear: [0, 8],
+      filas: [fila('Compras', c), fila('Ventas y pagos', v)], totales: fila('Total (neto)', t) },
+    { titulo: 'Ventas frente a compras', columnas: ['Indicador', 'Valor'], alinear: [0, 1], filas: comparacion },
+  ];
+}
+/** Para el reporte conjunto: compras y ventas de cada categoría con su resultado %. */
+function seccionComparacionCategorias(inc) {
+  const fila = (nombre, xs) => {
+    const c = statsLado(xs.filter(x => x.tipo === 'COMPRA')), v = statsLado(xs.filter(x => x.tipo !== 'COMPRA')), t = statsLado(xs);
+    return [nombre, usd(c.monto), signoUsd(c.dif), resultadoTxt(c.difBs, c.baseBs), usd(v.monto), signoUsd(v.dif), resultadoTxt(v.difBs, v.baseBs), signoUsd(t.dif), resultadoTxt(t.difBs, t.baseBs)];
+  };
+  return { titulo: 'Compras vs ventas por categoría', columnas: ['Categoría', 'Compras $', 'Dif. compras $', 'Resultado compras %', 'Ventas $', 'Dif. ventas $', 'Resultado ventas %', 'Dif. neto $', 'Resultado neto %'], alinear: [0, 3, 6, 8],
+    filas: CATEGORIAS.map(([k, nombre]) => fila(nombre, inc.filter(x => x.categoria === k))), totales: fila('Total', inc) };
+}
+function kpisResultado(inc) {
+  const c = statsLado(inc.filter(x => x.tipo === 'COMPRA')), v = statsLado(inc.filter(x => x.tipo !== 'COMPRA')), t = statsLado(inc);
+  const corto = r => r.replace(/ (ganancia|pérdida)$/, '');
+  return [
+    { etq: 'Resultado neto %', val: resultadoTxt(t.difBs, t.baseBs), clase: cl(t.difBs), sub: 'diferencial sobre el valor al BCV de todo lo operado' },
+    { etq: 'Compras vs ventas', val: 'compras ' + corto(resultadoTxt(c.difBs, c.baseBs)) + ' · ventas ' + corto(resultadoTxt(v.difBs, v.baseBs)),
+      sub: c.tasaProm && v.tasaProm ? 'tasa de venta ' + signo((v.tasaProm / c.tasaProm - 1) * 100, 2) + ' % frente a la de compra' : '' },
+  ];
+}
 const nombreMesSeguro = m => (/^\d{4}-\d{2}$/.test(m) ? nombreMes(m) : 'Sin fecha');
 function textoRango(desde, hasta) { return (desde ? fechaCorta(desde) : 'inicio') + ' al ' + (hasta ? fechaCorta(hasta) : 'hoy'); }
 function leidoTexto(iso) {
@@ -1047,6 +1101,7 @@ function reporteUnaCategoria(todas, base, fuente, categoria, soloConfirmadas, cp
     kpis: [
       { etq: 'Diferencial neto $', val: signoUsd(difUsd), clase: cl(difUsd), sub: signo(difBs, 2) + ' Bs' },
       { etq: 'Diferencial neto Bs', val: signo(difBs, 2) + ' Bs', clase: cl(difBs), sub: 'al BCV: ' + signoUsd(difUsd) },
+      ...kpisResultado(inc),
       { etq: 'Compras', val: num(cU, 2) + ' ' + u, sub: usd(sumar(compras, 'equiv')) + ' al BCV · ' + ves(cBs) + ' pagados' },
       { etq: 'Ventas / pagos', val: num(vU, 2) + ' ' + u, sub: usd(sumar(ventas, 'equiv')) + ' al BCV · ' + ves(vBs) + ' recibidos' },
       { etq: 'Tasa pactada promedio (compras) vs BCV', val: tasaProm ? num(tasaProm, 2) + ' vs ' + num(bcvProm, 2) : '—', sub: tasaProm && bcvProm ? 'brecha ' + signo((tasaProm / bcvProm - 1) * 100, 2) + ' %' : '' },
@@ -1057,13 +1112,14 @@ function reporteUnaCategoria(todas, base, fuente, categoria, soloConfirmadas, cp
       { titulo: 'Resumen por mes', columnas: ['Mes', 'Compras ' + u, 'Bs pagados', 'Dif. compras $', 'Ventas ' + u, 'Bs recibidos', 'Dif. ventas $', 'Dif. neto $', 'Dif. neto Bs', ...colsPartidas(cp)], alinear: [0],
         filas: listaMeses.map(([mes, m]) => [nombreMesSeguro(mes), num(m.cU, 2), num(m.cBs, 2), signoUsd(m.cDif), num(m.vU, 2), num(m.vBs, 2), signoUsd(m.vDif), signoUsd(m.dif), signo(m.difBs, 2), ...celdasPartidas(cp, mes)]),
         totales: ['Total', num(cU, 2), num(cBs, 2), signoUsd(sumar(compras, 'difUsd')), num(vU, 2), num(vBs, 2), signoUsd(sumar(ventas, 'difUsd')), signoUsd(difUsd), signo(difBs, 2), ...totalesPartidas(cp)] },
-      { titulo: 'Detalle por operación', columnas: ['Fecha', 'Tipo', u, 'Banco', 'Total Bs', 'Tasa pactada', 'Tasa BCV', 'Dif. Bs', 'Dif. $', 'Estado'], alinear: [0, 1, 3, 9],
-        filas: inc.map(x => [fechaCorta(x.op.fecha), x.tipo, num(x.usdt, 2), x.banco || '—', num(x.totalBs, 2), x.tasaPactada ? num(x.tasaPactada, 2) : '—', num(x.tasaBcv, 2), signo(x.difBs, 2), signoUsd(x.difUsd), etiquetaEstado(x)]),
-        totales: ['Total', plural(inc.length, 'op.', 'op.'), '', '', '', '', '', signo(difBs, 2), signoUsd(difUsd), ''] },
+      ...seccionesComprasVsVentas(inc, u),
+      { titulo: 'Detalle por operación', columnas: ['Fecha', 'Tipo', u, 'Banco', 'Total Bs', 'Tasa pactada', 'Tasa BCV', 'Dif. Bs', 'Dif. $', 'Resultado %', 'Estado'], alinear: [0, 1, 3, 9, 10],
+        filas: inc.map(x => [fechaCorta(x.op.fecha), x.tipo, num(x.usdt, 2), x.banco || '—', num(x.totalBs, 2), x.tasaPactada ? num(x.tasaPactada, 2) : '—', num(x.tasaBcv, 2), signo(x.difBs, 2), signoUsd(x.difUsd), resultadoTxt(x.difBs, x.usdt * x.tasaBcv), etiquetaEstado(x)]),
+        totales: ['Total', plural(inc.length, 'op.', 'op.'), '', '', '', '', '', signo(difBs, 2), signoUsd(difUsd), resultadoTxt(difBs, baseBsDe(inc)), ''] },
       { titulo: 'Por revisar (no incluidas)', columnas: ['Fecha', 'Descripción', u, 'Motivo'], alinear: [0, 1, 3],
         filas: revisar.map(x => [fechaCorta(x.op.fecha) || '—', x.op.descripcion || x.op.partida || '', num(x.usdt, 2), x.motivo]) },
     ],
-    nota: fuente + (categoria === 'usdt' || !categoria ? ' "Ventas / pagos" incluye pagos hechos con USDT.' : '')
+    nota: fuente + ' "Resultado %" = diferencial ÷ valor al BCV de la operación (monto × BCV del día): positivo = ganancia, negativo = pérdida.' + (categoria === 'usdt' || !categoria ? ' "Ventas / pagos" incluye pagos hechos con USDT.' : '')
       + (cp ? ' "Pagos MP del mes" = todos los pagos de materia prima del mes según las partidas de los bancos; los que no tienen línea de diferencial se hicieron a tasa BCV.' : ''),
   };
 }
@@ -1091,7 +1147,8 @@ function reporteTodas(todas, base, fuente, soloConfirmadas, cp) {
     tipo: 'diferencial-todas', titulo: 'Diferencial cambiario · todas las categorías', ...base,
     kpis: [
       { etq: 'Diferencial neto total', val: signoUsd(difUsd), clase: cl(difUsd), sub: signo(difBs, 2) + ' Bs · ' + plural(inc.length, 'operación', 'operaciones') },
-      ...porCat.map(c => ({ etq: c.nombre, val: signoUsd(c.dif), clase: cl(c.dif), sub: plural(c.n, 'op.', 'op.') + ' · ' + signo(c.difBs, 2) + ' Bs' })),
+      ...kpisResultado(inc),
+      ...porCat.map(c => ({ etq: c.nombre, val: signoUsd(c.dif), clase: cl(c.dif), sub: plural(c.n, 'op.', 'op.') + ' · ' + signo(c.difBs, 2) + ' Bs · ' + resultadoTxt(c.difBs, c.baseBs) })),
       ...(cp ? [kpiPagosBcv(cp)] : []),
       kpiOperaciones(todas, soloConfirmadas),
     ],
@@ -1099,16 +1156,18 @@ function reporteTodas(todas, base, fuente, soloConfirmadas, cp) {
       { titulo: 'Resumen por categoría', columnas: ['Categoría', 'Operaciones', '$ al BCV', 'Bs', 'Dif. $', 'Dif. Bs', '% sobre BCV'], alinear: [0],
         filas: porCat.map(c => [c.nombre, String(c.n), usd(c.usdt), ves(c.bs), signoUsd(c.dif), signo(c.difBs, 2), pctTxt(c.difBs, c.baseBs)]),
         totales: ['Total', String(inc.length), usd(sumar(inc, 'usdt')), ves(sumar(inc, 'totalBs')), signoUsd(difUsd), signo(difBs, 2), pctTxt(difBs, baseTotal)] },
+      seccionComparacionCategorias(inc),
+      ...seccionesComprasVsVentas(inc, '$'),
       { titulo: 'Resumen por mes y categoría (diferencial en $ al BCV)', columnas: ['Mes', 'USDT $', 'Efectivo $', 'Materia prima $', 'Otros $', 'Total $', ...colsPartidas(cp)], alinear: [0],
         filas: listaMeses.map(([mes, m]) => [nombreMesSeguro(mes), signoUsd(m.usdt), signoUsd(m.efectivo), signoUsd(m.materia), signoUsd(m.otros), signoUsd(m.total), ...celdasPartidas(cp, mes)]),
         totales: ['Total', ...porCat.map(c => signoUsd(c.dif)), signoUsd(difUsd), ...totalesPartidas(cp)] },
-      { titulo: 'Detalle por operación', columnas: ['Fecha', 'Categoría', 'Tipo', 'Monto $', 'Banco', 'Total Bs', 'Tasa pactada', 'Tasa BCV', 'Dif. Bs', 'Dif. $', 'Estado'], alinear: [0, 1, 2, 4, 10],
-        filas: inc.map(x => [fechaCorta(x.op.fecha), NOMBRE_CATEGORIA[x.categoria] || x.categoria, x.tipo, num(x.usdt, 2), x.banco || '—', num(x.totalBs, 2), x.tasaPactada ? num(x.tasaPactada, 2) : '—', num(x.tasaBcv, 2), signo(x.difBs, 2), signoUsd(x.difUsd), etiquetaEstado(x)]),
-        totales: ['Total', '', plural(inc.length, 'op.', 'op.'), '', '', '', '', '', signo(difBs, 2), signoUsd(difUsd), ''] },
+      { titulo: 'Detalle por operación', columnas: ['Fecha', 'Categoría', 'Tipo', 'Monto $', 'Banco', 'Total Bs', 'Tasa pactada', 'Tasa BCV', 'Dif. Bs', 'Dif. $', 'Resultado %', 'Estado'], alinear: [0, 1, 2, 4, 10, 11],
+        filas: inc.map(x => [fechaCorta(x.op.fecha), NOMBRE_CATEGORIA[x.categoria] || x.categoria, x.tipo, num(x.usdt, 2), x.banco || '—', num(x.totalBs, 2), x.tasaPactada ? num(x.tasaPactada, 2) : '—', num(x.tasaBcv, 2), signo(x.difBs, 2), signoUsd(x.difUsd), resultadoTxt(x.difBs, x.usdt * x.tasaBcv), etiquetaEstado(x)]),
+        totales: ['Total', '', plural(inc.length, 'op.', 'op.'), '', '', '', '', '', signo(difBs, 2), signoUsd(difUsd), resultadoTxt(difBs, baseTotal), ''] },
       { titulo: 'Por revisar (no incluidas)', columnas: ['Fecha', 'Categoría', 'Descripción', 'Monto $', 'Motivo'], alinear: [0, 1, 2, 4],
         filas: revisar.map(x => [fechaCorta(x.op.fecha) || '—', NOMBRE_CATEGORIA[x.categoria] || x.categoria, x.op.descripcion || x.op.partida || '', num(x.usdt, 2), x.motivo]) },
     ],
-    nota: fuente + ' Categorías según la partida de la línea principal de cada diferencial: BINANCE → USDT; EFECTIVO DOLARES → efectivo; materia prima, compras y cobros de clientes → materia prima y clientes; el resto → otros pagos. "Monto $" = USDT, dólares o factura al BCV.'
+    nota: fuente + ' "Resultado %" = diferencial ÷ valor al BCV (monto × BCV del día): positivo = ganancia, negativo = pérdida. Categorías según la partida de la línea principal de cada diferencial: BINANCE → USDT; EFECTIVO DOLARES → efectivo; materia prima, compras y cobros de clientes → materia prima y clientes; el resto → otros pagos. "Monto $" = USDT, dólares o factura al BCV.'
       + (cp ? ' "Pagos MP del mes" = todos los pagos de materia prima del mes según las partidas de los bancos; los que no tienen línea de diferencial se hicieron a tasa BCV.' : ''),
   };
 }
